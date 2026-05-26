@@ -1,32 +1,30 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import LoginPage from "@/pages/LoginPage";
-import ParentDashboard from "@/pages/ParentDashboard";
-import StudentDashboard from "@/pages/StudentDashboard";
-import { useAuthStore } from "@/store/authStore";
 
+// Placeholder routes - to be implemented with actual pages
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const token = useAuthStore((s) => s.token);
-  return token ? <>{children}</> : <Navigate to="/login" replace />;
+  // TODO: Implement authentication check
+  return <>{children}</>;
 }
 
-export default function App() {
+export default function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/login" element={<LoginPage />} />
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/login" element={<div>Login Page - To be implemented</div>} />
         <Route
-          path="/parent"
+          path="/parent/*"
           element={
             <ProtectedRoute>
-              <ParentDashboard />
+              <div>Parent Dashboard - To be implemented</div>
             </ProtectedRoute>
           }
         />
         <Route
-          path="/student"
+          path="/student/*"
           element={
             <ProtectedRoute>
-              <StudentDashboard />
+              <div>Student Dashboard - To be implemented</div>
             </ProtectedRoute>
           }
         />
