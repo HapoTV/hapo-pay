@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { LandingPage } from "@/features/landing";
+import { ParentLoginScreen, StudentLoginScreen, ParentSignupScreen } from "@/features/auth";
 
 // Placeholder routes - to be implemented with actual pages
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -10,8 +12,10 @@ export default function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="/login" element={<div>Login Page - To be implemented</div>} />
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<ParentLoginScreen />} />
+        <Route path="/signup" element={<ParentSignupScreen />} />
+        <Route path="/student-login" element={<StudentLoginScreen />} />
         <Route
           path="/parent/*"
           element={
