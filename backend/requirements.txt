@@ -1,22 +1,50 @@
-# Core
-Django==5.0.6
-djangorestframework==3.15.2
-django-cors-headers==4.4.0
+# Core Framework - Use Django 4.2 for better compatibility
+Django==4.2.11
+djangorestframework==3.14.0
+djangorestframework-simplejwt==5.3.0
+django-cors-headers==4.3.1
+django-environ==0.11.2
 
-# Auth
-djangorestframework-simplejwt==5.3.1
-
-# Database
+# Database - Use psycopg2 (binary version for Python 3.11/3.12)
 psycopg2-binary==2.9.9
-dj-database-url==2.2.0
 
-# Environment
-python-dotenv==1.0.1
+# Supabase
+supabase==1.2.0
+
+# WebSockets & Async
+channels==4.0.0
+channels-redis==4.2.0
+redis==5.0.1
+
+# API Documentation
+drf-yasg==1.21.7
 
 # Utilities
-Pillow==10.4.0
-django-filter==24.3
+django-filter==23.5
+django-axes==6.3.0
+django-celery-beat==2.6.0
+celery==5.3.6
 
-# Dev / testing
-pytest-django==4.8.0
-factory-boy==3.3.1
+# Image Processing (older version that works)
+Pillow==10.0.0
+
+# QR Code
+qrcode==7.4.2
+
+# Payments
+stripe==7.5.0
+requests==2.31.0
+
+# Firebase
+firebase-admin==6.4.0
+
+# Monitoring
+sentry-sdk==1.40.0
+django-debug-toolbar==4.2.0
+
+# Testing
+pytest==7.4.4
+pytest-django==4.7.0
+factory-boy==3.3.0
+faker==20.0.3
+coverage==7.4.0
