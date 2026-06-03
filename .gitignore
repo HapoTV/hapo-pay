@@ -65,6 +65,7 @@ mobile/coverage/
 
 # ─── Environment & Secrets ─────────────────────────────────────────────────────
 .env
+venv/
 .env.*
 !.env.example
 *.pem
