@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LandingPage } from "@/features/landing";
-import { ParentLoginScreen, StudentLoginScreen, ParentSignupScreen } from "@/features/auth";
+import { ParentLoginScreen, StudentLoginScreen, ParentSignupScreen, ForgotPasswordScreen } from "@/features/auth";
 import { ParentDashboard } from "@/features/parentdashboard/pages/Dashboard";
 
 // Placeholder routes - to be implemented with actual pages
@@ -17,6 +17,7 @@ export default function AppRoutes() {
         <Route path="/login" element={<ParentLoginScreen />} />
         <Route path="/signup" element={<ParentSignupScreen />} />
         <Route path="/student-login" element={<StudentLoginScreen />} />
+        <Route path="/forgot-password" element={<ForgotPasswordScreen />} />
         <Route
           path="/parent/*"
           element={

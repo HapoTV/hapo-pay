@@ -93,12 +93,13 @@ export default function ParentLoginScreen() {
                 />
                 <span className="text-sm text-slate-600">Remember me</span>
               </label>
-              <a
-                href="#forgot"
+              <button
+                type="button"
+                onClick={() => navigate("/forgot-password")}
                 className="text-sm font-semibold text-rose-500 transition hover:text-rose-600"
               >
                 Forgot password?
-              </a>
+              </button>
             </div>
 
             {/* Sign In Button */}

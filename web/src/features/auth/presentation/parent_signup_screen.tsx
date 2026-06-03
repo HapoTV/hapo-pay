@@ -11,7 +11,6 @@ const countries = [
 const currencies = [
   { label: "za South African Rand (R)", value: "ZAR" },
   { label: "us US Dollar ($)", value: "USD" },
-  { label: "uk British Pound (£)", value: "GBP" },
 ];
 
 const provinces = [
