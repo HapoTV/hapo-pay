@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "@/store/authStore";
 
 const countries = [
   { label: "ZA +27", value: "ZA" },
@@ -24,6 +25,7 @@ const provinces = [
 
 export default function ParentSignupScreen() {
   const navigate = useNavigate();
+  const setAuth = useAuthStore((state) => state.setAuth);
   const [firstName, setFirstName] = useState("");
   const [surname, setSurname] = useState("");
   const [country, setCountry] = useState("ZA");
@@ -38,20 +40,18 @@ export default function ParentSignupScreen() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement parent registration logic
-    console.log({
-      firstName,
-      surname,
-      country,
-      phone,
-      currency,
-      email,
-      province,
-      password,
-      confirmPassword,
-      gender,
-      agree,
-    });
+    if (email && password && confirmPassword === password && agree) {
+      // Create a mock token for local development
+      const mockToken = btoa(`${email}:${password}`);
+      setAuth(mockToken, "parent");
+      navigate("/parent");
+    } else if (password !== confirmPassword) {
+      alert("Passwords do not match");
+    } else if (!agree) {
+      alert("Please agree to the terms");
+    } else {
+      alert("Please fill in all required fields");
+    }
   };
 
   return (

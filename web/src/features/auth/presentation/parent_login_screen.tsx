@@ -1,16 +1,22 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "@/store/authStore";
 
 export default function ParentLoginScreen() {
   const navigate = useNavigate();
+  const setAuth = useAuthStore((state) => state.setAuth);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
 
   const handleSignIn = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement actual authentication logic
-    console.log("Sign in:", { email, password, rememberMe });
+    if (email && password) {
+      // Create a mock token for local development
+      const mockToken = btoa(`${email}:${password}`);
+      setAuth(mockToken, "parent");
+      navigate("/parent");
+    }
   };
 
   return (

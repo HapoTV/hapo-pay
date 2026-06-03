@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LandingPage } from "@/features/landing";
 import { ParentLoginScreen, StudentLoginScreen, ParentSignupScreen } from "@/features/auth";
+import { ParentDashboard } from "@/features/parentdashboard/pages/Dashboard";
 
 // Placeholder routes - to be implemented with actual pages
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -20,7 +21,7 @@ export default function AppRoutes() {
           path="/parent/*"
           element={
             <ProtectedRoute>
-              <div>Parent Dashboard - To be implemented</div>
+              <ParentDashboard />
             </ProtectedRoute>
           }
         />
