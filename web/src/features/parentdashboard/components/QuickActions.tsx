@@ -9,25 +9,28 @@ interface QuickActionItem {
 
 interface QuickActionsProps {
   actions: QuickActionItem[];
+  title?: string;
 }
 
-export const QuickActions: React.FC<QuickActionsProps> = ({ actions }) => {
+export const QuickActions: React.FC<QuickActionsProps> = ({ actions, title = 'Quick Actions' }) => {
   return (
-    <div className="mb-8">
-      <h3 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="mb-8 w-full">
+      <h3 className="text-xl font-bold text-slate-950 mb-4">{title}</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 justify-items-center">
         {actions.map((action) => (
           <button
             key={action.id}
             onClick={action.onClick}
-            className="bg-white rounded-2xl p-6 border-l-4 border-pink-500 shadow-sm hover:shadow-md hover:scale-105 transition transform flex flex-col items-center text-center"
+            className="bg-white rounded-[1.5rem] p-2 border border-slate-200 shadow-sm hover:shadow-md transition transform hover:-translate-y-0.5 flex flex-col items-center justify-center gap-1 text-center w-full max-w-[360px] min-h-[72px]"
           >
-            <div className="bg-pink-100 rounded-lg p-4 mb-3 w-12 h-12 flex items-center justify-center">
+            <div className="bg-rose-50 text-rose-500 rounded-full p-1.5 flex items-center justify-center w-9 h-9">
               {action.icon}
             </div>
-            <h4 className="text-sm font-semibold text-gray-900 leading-tight">
-              {action.title}
-            </h4>
+            <div>
+              <h4 className="text-xs font-semibold text-slate-950 leading-tight">
+                {action.title}
+              </h4>
+            </div>
           </button>
         ))}
       </div>

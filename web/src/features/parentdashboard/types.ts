@@ -13,6 +13,7 @@ export interface ParentUser {
   email: string;
   familyBalance: number;
   monthlySpending: number;
+  savings: number;
   currency: string;
   children: Child[];
 }
