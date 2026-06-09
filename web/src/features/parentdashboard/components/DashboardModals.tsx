@@ -1,4 +1,5 @@
 import React from 'react';
+import { CloseIcon, RefreshIcon, CardIcon, InfoIcon } from '../../../components/icons';
 import type { Child } from '../types';
 
 interface ModalShellProps {
@@ -26,9 +27,7 @@ const ModalShell: React.FC<ModalShellProps> = ({
         <div className="flex items-center justify-between px-6 py-5 border-b border-slate-200">
           <h2 className="text-xl font-semibold text-slate-950">{title}</h2>
           <button onClick={onClose} className="text-slate-500 hover:text-slate-900" aria-label="Close">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <CloseIcon className="w-5 h-5" />
           </button>
         </div>
         <div className="px-6 py-6">{children}</div>
@@ -173,10 +172,7 @@ export const RecurringModal: React.FC<RecurringModalProps> = ({ open, onClose, o
   >
     <div className="text-center">
       <div className="mx-auto mb-8 flex h-20 w-20 items-center justify-center rounded-3xl bg-slate-100 text-rose-500">
-        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 1l4 4m0 0l-4 4m4-4H7a6 6 0 00-6 6v3" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15l4 4m0 0l4-4m-4 4V7a6 6 0 016-6h3" />
-        </svg>
+        <RefreshIcon className="w-8 h-8" />
       </div>
       <h3 className="text-lg font-semibold text-slate-950">No recurring payments set up yet</h3>
       <p className="mt-2 text-sm text-slate-500">Click "Add New Payment" to create your first recurring payment</p>
@@ -387,7 +383,7 @@ export const AddMoneyModal: React.FC<AddMoneyModalProps> = ({
               className={`w-full text-left rounded-lg border p-3 flex items-center gap-3 ${selectedPaymentMethod === method.value ? 'border-rose-300 bg-rose-50' : 'border-slate-200 bg-white'}`}
             >
               <div className="w-10 h-10 flex items-center justify-center bg-sky-50 rounded-md text-sky-500">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M2 7a2 2 0 012-2h12a2 2 0 012 2v2H2V7z"/><path d="M2 11h16v2a2 2 0 01-2 2H4a2 2 0 01-2-2v-2z"/></svg>
+                <CardIcon className="w-5 h-5" />
               </div>
               <div className="flex-1">
                 <div className="font-semibold text-slate-900">{method.label}</div>
@@ -399,9 +395,9 @@ export const AddMoneyModal: React.FC<AddMoneyModalProps> = ({
       </div>
 
       <div className="mt-4 p-3 rounded-lg bg-slate-50 border border-slate-200 text-sm text-slate-700">
-        <div className="flex items-start gap-3">
+          <div className="flex items-start gap-3">
           <div className="text-sky-500 mt-0.5">
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a7 7 0 100 14A7 7 0 009 2zM8 6h2v5H8V6zm1 8a1 1 0 110-2 1 1 0 010 2z"/></svg>
+            <InfoIcon className="w-5 h-5" />
           </div>
           <div>Your payment is secure and encrypted. Funds will be available immediately after successful payment.</div>
         </div>

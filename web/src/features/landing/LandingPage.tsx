@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 
+import NavBar from "../../components/NavBar";
+import Footer from "../../components/Footer";
+import PhoneMockup from "../../components/PhoneMockup";
+
 const features = [
   {
     title: "Parent controls",
@@ -63,13 +67,7 @@ const safetyItems = [
   "Spending limits per child",
 ];
 
-function HapoLogo() {
-  return (
-    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-transparent text-xs font-bold uppercase tracking-[0.18em] text-slate-900 shadow-md shadow-slate-900/6">
-      Logo
-    </span>
-  );
-}
+// NavBar extracted to `web/src/components/NavBar.tsx`
 
 export default function LandingPage() {
   const [featureCount, setFeatureCount] = useState(0);
@@ -88,26 +86,7 @@ export default function LandingPage() {
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,_rgba(15,23,42,0.08),_transparent_34%),radial-gradient(circle_at_80%_20%,_rgba(15,23,42,0.04),_transparent_28%),linear-gradient(135deg,_#f8fafc_0%,_#f1f5f9_48%,_#e2e8f0_100%)]" />
         <div className="absolute left-1/2 top-0 -z-10 h-96 w-96 -translate-x-1/2 rounded-full bg-slate-100/70 blur-3xl" />
 
-        <nav className="mx-auto mt-4 flex w-[min(99.8%,90rem)] items-center justify-between gap-4 rounded-[1.5rem] border border-slate-200 bg-white/95 px-8 py-2 shadow-md shadow-slate-200/10 backdrop-blur-md">
-          <a href="/" className="flex items-center gap-3">
-            <HapoLogo />
-            <span className="text-base font-black tracking-tight text-slate-900">HapoPay</span>
-          </a>
-          <div className="hidden items-center gap-6 text-sm font-semibold uppercase tracking-[0.18em] text-slate-900 md:flex">
-            <a href="/" className="transition hover:text-slate-700">HOME</a>
-            <a href="#about" className="transition hover:text-slate-700">ABOUT US</a>
-            <a href="#features" className="transition hover:text-slate-700">FEATURES</a>
-            <a href="#how-it-works" className="transition hover:text-slate-700">HOW IT WORKS</a>
-          </div>
-          <div className="flex items-center gap-3">
-            <a href="/login" className="rounded-full bg-rose-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-rose-600">
-              Parent Sign In
-            </a>
-            <a href="/student-login" className="hidden rounded-full border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-bold text-slate-900 transition hover:bg-slate-200 sm:inline-flex">
-              Student Login
-            </a>
-          </div>
-        </nav>
+        <NavBar />
 
         <div className="mx-auto grid max-w-7xl items-center gap-10 px-6 py-12 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:py-16">
           <div>
@@ -131,56 +110,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="relative mx-auto flex w-full max-w-md justify-center lg:max-w-lg">
-            <div className="absolute -right-4 top-20 z-20 hidden w-32 rounded-3xl border border-slate-200 bg-slate-100/95 p-2 shadow-2xl backdrop-blur-xl sm:block lg:-right-8">
-              <p className="text-[0.5rem] font-semibold uppercase tracking-[0.15em] text-slate-500">Scan to pay</p>
-              <p className="mt-1 text-xs font-black text-slate-950"><span className="text-rose-500/80">QR</span> Ready</p>
-            </div>
-            <div className="absolute -right-4 top-20 z-20 hidden w-32 translate-y-24 rounded-3xl border border-slate-200 bg-slate-100/90 p-2 shadow-2xl backdrop-blur-xl sm:block lg:-right-8">
-              <p className="text-[0.65rem] text-slate-500">Payment status</p>
-              <p className="mt-1 text-xs font-bold text-slate-950">Protected</p>
-            </div>
-            <div className="absolute -right-4 top-20 z-20 hidden w-32 translate-y-48 rounded-3xl border border-slate-200 bg-slate-100/90 p-2 shadow-2xl backdrop-blur-xl sm:block lg:-right-8">
-              <p className="text-[0.65rem] text-slate-500">Learning games</p>
-              <p className="mt-1 text-xs font-bold text-slate-950">Play <span className="text-rose-500/80">&</span> earn</p>
-            </div>
-            <div className="absolute -inset-4 rounded-[3rem] bg-gradient-to-tr from-primary/30 via-success/15 to-warning/20 blur-3xl" />
-            <div className="relative w-[180px] rounded-[1.5rem] border-[5px] border-slate-600 bg-slate-800/90 p-1 shadow-sm shadow-primary/20 ring-1 ring-white/8 sm:w-[220px]">
-              <div className="absolute left-1/2 top-0 z-20 h-4 w-20 -translate-x-1/2 rounded-b-3xl bg-slate-600" />
-              <div className="relative min-h-[280px] overflow-hidden rounded-[1.25rem] bg-[radial-gradient(circle_at_50%_12%,_rgba(255,255,255,0.18),_transparent_30%),linear-gradient(160deg,_#323f4a_0%,_#243244_42%,_#125c88_100%)] px-2 py-5">
-                <div className="absolute inset-0 bg-[linear-gradient(135deg,_rgba(255,255,255,0.12),_transparent_35%,_rgba(40,167,69,0.18))]" />
-                <div className="relative z-10 flex min-h-[300px] flex-col items-center justify-between text-center">
-                  <div className="pt-10">
-                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl border border-dashed border-slate-400 bg-slate-950/10 shadow-sm">
-                      <span className="text-[0.6rem] font-semibold uppercase tracking-[0.28em] text-slate-500">Logo</span>
-                    </div>
-                    <div className="mt-3 h-6" />
-                    <p className="mt-1 text-sm font-semibold text-slate-500">HapoPay</p>
-                  </div>
-
-                  <div className="w-full rounded-[1.25rem] border border-slate-200 bg-white p-4 shadow-lg">
-                    <p className="text-xs font-bold uppercase tracking-[0.28em] text-slate-900">Scan QR</p>
-                    <div className="mx-auto mt-3 grid h-28 w-28 grid-cols-5 gap-1 rounded-2xl bg-slate-100 p-2 shadow">
-                      {Array.from({ length: 25 }).map((_, index) => (
-                        <span
-                          key={index}
-                          className={`rounded-[3px] ${
-                            [0, 1, 3, 4, 5, 8, 10, 12, 13, 16, 18, 20, 21, 23, 24].includes(index)
-                              ? "bg-slate-950"
-                              : "bg-slate-200"
-                          }`}
-                        />
-                      ))}
-                    </div>
-                    <p className="mt-4 text-sm font-semibold text-slate-900">Tap or scan to pay safely</p>
-                    <p className="mt-1 text-xs text-slate-500">Parent limits and alerts stay active.</p>
-                  </div>
-
-                  <div className="h-1.5 w-28 rounded-full bg-white/70" />
-                </div>
-              </div>
-            </div>
-          </div>
+          <PhoneMockup />
         </div>
       </section>
 
@@ -278,68 +208,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <footer className="bg-slate-800 text-slate-200">
-        <div className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
-          <div className="grid gap-10 lg:grid-cols-4">
-            <div className="space-y-6">
-              <div className="inline-flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-500 text-sm font-black text-white">Logo</span>
-                <span className="text-lg font-semibold tracking-tight text-white">HapoPay</span>
-              </div>
-              <p className="max-w-sm text-sm leading-6 text-slate-300">
-                Empowering families with smarter student spending controls, safe QR payments, and real-time parent visibility.
-              </p>
-              <div className="flex items-center gap-3 text-slate-300">
-                <a href="#" className="rounded-full bg-slate-800 p-2 transition hover:bg-slate-700">
-                  <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M22 12a10 10 0 10-11.62 9.87v-6.99H7.9v-2.88h2.48V9.41c0-2.45 1.45-3.8 3.67-3.8 1.06 0 2.17.19 2.17.19v2.39h-1.22c-1.2 0-1.57.75-1.57 1.52v1.82h2.68l-.43 2.88h-2.25v6.99A10 10 0 0022 12z"/></svg>
-                </a>
-                <a href="#" className="rounded-full bg-slate-800 p-2 transition hover:bg-slate-700">
-                  <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 19c7.18 0 11.1-5.94 11.1-11.1v-.51A7.94 7.94 0 0022 4.58a7.93 7.93 0 01-2.28.63A3.99 3.99 0 0021.44 3a7.96 7.96 0 01-2.52.96A3.97 3.97 0 0015.5 3c-2.2 0-4 1.8-4 4 0 .31.03.61.1.9A11.3 11.3 0 013 4.94a4 4 0 00-.54 2.02c0 1.4.71 2.64 1.8 3.36a4 4 0 01-1.82-.5v.05c0 1.9 1.35 3.48 3.14 3.84a3.98 3.98 0 01-1.81.07 4.01 4.01 0 003.74 2.78A7.97 7.97 0 012 17.54a11.3 11.3 0 006.1 1.79"/></svg>
-                </a>
-                <a href="#" className="rounded-full bg-slate-800 p-2 transition hover:bg-slate-700">
-                  <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0H5C2.24 0 0 2.24 0 5v14c0 2.76 2.24 5 5 5h14c2.76 0 5-2.24 5-5V5c0-2.76-2.24-5-5-5zm-5 19h-2v-6h2v6zm-1-7.2a1.2 1.2 0 110-2.4 1.2 1.2 0 010 2.4zM18 19h-2v-3c0-.83-.67-1.5-1.5-1.5S13 15.17 13 16v3h-2v-6h2v.52c.3-.36.76-.52 1.24-.52 1.17 0 2.26.96 2.26 2.4V19z"/></svg>
-                </a>
-              </div>
-            </div>
-
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.25em] text-slate-400">Product</p>
-              <ul className="mt-6 space-y-3 text-sm text-slate-300">
-                <li><a href="#features" className="transition hover:text-white">Features</a></li>
-                <li><a href="#how-it-works" className="transition hover:text-white">How it works</a></li>
-                <li><a href="/login" className="transition hover:text-white">Parent sign in</a></li>
-                <li><a href="/student-login" className="transition hover:text-white">Student login</a></li>
-              </ul>
-            </div>
-
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.25em] text-slate-400">Company</p>
-              <ul className="mt-6 space-y-3 text-sm text-slate-300">
-                <li><a href="#about" className="transition hover:text-white">About</a></li>
-                <li><a href="#safety" className="transition hover:text-white">Safety</a></li>
-                <li><a href="#features" className="transition hover:text-white">Careers</a></li>
-              </ul>
-            </div>
-
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.25em] text-slate-400">Support</p>
-              <ul className="mt-6 space-y-3 text-sm text-slate-300">
-                <li><a href="#" className="transition hover:text-white">Help center</a></li>
-                <li><a href="#" className="transition hover:text-white">Contact support</a></li>
-                <li><a href="#" className="transition hover:text-white">Privacy policy</a></li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="mt-12 flex flex-col gap-4 border-t border-slate-800 pt-6 text-sm text-slate-400 sm:flex-row sm:items-center sm:justify-between">
-            <p>© 2026 HapoPay. All rights reserved.</p>
-            <div className="flex flex-wrap items-center gap-4">
-              <a href="#" className="transition hover:text-white">Terms of service</a>
-              <a href="#" className="transition hover:text-white">Cookies</a>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </main>
   );
 }

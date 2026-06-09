@@ -1,4 +1,5 @@
 import React from 'react';
+import { PlusIcon, PersonIcon } from '../../../components/icons';
 import type { Child } from '../types';
 
 interface ChildrenSectionProps {
@@ -24,18 +25,14 @@ export const ChildrenSection: React.FC<ChildrenSectionProps> = ({
           onClick={onAddChild}
           className="bg-rose-500 hover:bg-rose-600 text-white px-4 py-2 rounded-full text-sm font-medium transition flex items-center gap-2"
         >
-          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
-          </svg>
+          <PlusIcon className="w-4 h-4" />
           Add Child
         </button>
       </div>
 
       {!hasChildren ? (
         <div className="bg-white rounded-2xl p-8 text-center border-2 border-dashed border-slate-200">
-          <svg className="w-12 h-12 text-slate-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-          </svg>
+          <PersonIcon className="w-12 h-12 text-slate-400 mx-auto mb-3" />
           <p className="text-slate-600 text-sm">No children yet. Click "Add Child" to create an account.</p>
         </div>
       ) : (

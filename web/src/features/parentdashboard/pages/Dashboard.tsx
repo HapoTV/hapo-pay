@@ -20,6 +20,19 @@ import {
   PaySection,
   TransferSection,
 } from '../components';
+import {
+  HomeIcon,
+  WalletIcon,
+  PlayIcon,
+  StarIcon,
+  TvIcon,
+  LightningBoltIcon,
+  SignalIcon,
+  ShieldIcon,
+  TransferIcon,
+  RefreshIcon,
+  CogIcon,
+} from '@/components/icons';
 
 // Mock data for development
 const mockParentData = {
@@ -63,6 +76,13 @@ const mockAirtimeHistory = [
   { id: '2', number: '+27 82 345 6789', type: 'Data', amount: 30, date: '2025-01-12', status: 'Success' },
   { id: '3', number: '+27 73 456 7890', type: 'Airtime', amount: 100, date: '2025-01-10', status: 'Success' },
   { id: '4', number: '+27 71 234 5678', type: 'Data', amount: 20, date: '2025-01-08', status: 'Success' },
+];
+
+const mockElectricityHistory = [
+  { id: '1', meterName: 'Home', meterNumber: '1234567890', amount: 500, date: '2025-01-18', status: 'Success' },
+  { id: '2', meterName: 'Home', meterNumber: '1234567890', amount: 300, date: '2025-01-14', status: 'Success' },
+  { id: '3', meterName: 'Home', meterNumber: '1234567890', amount: 250, date: '2025-01-10', status: 'Success' },
+  { id: '4', meterName: 'Home', meterNumber: '1234567890', amount: 400, date: '2025-01-05', status: 'Success' },
 ];
 
 const mockQrPayments = [
@@ -148,10 +168,17 @@ export const ParentDashboard: React.FC = () => {
 
   // Electricity page
   const [showElectricityPage, setShowElectricityPage] = useState(false);
+  const [electricityTab, setElectricityTab] = useState<'buy' | 'history'>('buy');
   const [electricityMeters, setElectricityMeters] = useState([{ id: '1', name: 'Home', meterNumber: '1234567890' }]);
   const [showAddMeterForm, setShowAddMeterForm] = useState(false);
   const [newMeterName, setNewMeterName] = useState('');
   const [newMeterNumber, setNewMeterNumber] = useState('');
+  const [selectedMeterForBuy, setSelectedMeterForBuy] = useState<string | null>(null);
+  const [electricityAmount, setElectricityAmount] = useState('');
+  const [showElectricityConfirmation, setShowElectricityConfirmation] = useState(false);
+
+  // Airtime/Electricity Confirmation states
+  const [showAirtimeConfirmation, setShowAirtimeConfirmation] = useState(false);
 
   const handleLogout = () => {
     clearAuth();
@@ -294,17 +321,26 @@ export const ParentDashboard: React.FC = () => {
 
   const handleConfirmBuyAirtime = () => {
     if (!selectedContactForBuy || !buyAccount || !buyProductType) return;
-    const contact = contacts.find((c) => c.id === selectedContactForBuy);
     if (buyProductType === 'Airtime') {
       const amountValue = Number(airtimeAmount);
       if (!amountValue || amountValue <= 0) return;
-      alert(`Purchase airtime of R${amountValue.toFixed(2)} for ${contact?.name} (${contact?.number}) on ${contact?.network} from ${buyAccount} account.`);
     } else {
       if (!selectedDataBundle) return;
+    }
+    setShowAirtimeConfirmation(true);
+  };
+
+  const handleAirtimePurchaseConfirmed = () => {
+    const contact = contacts.find((c) => c.id === selectedContactForBuy);
+    if (buyProductType === 'Airtime') {
+      const amountValue = Number(airtimeAmount);
+      alert(`✓ Purchase confirmed!\n\nAirtime of R${amountValue.toFixed(2)} for ${contact?.name} (${contact?.number}) on ${contact?.network} from ${buyAccount} account has been processed.`);
+    } else {
       const bundleLabel = dataBundlesByNetwork[contact?.network || '']?.find((b) => b.id === selectedDataBundle)?.label;
-      alert(`Purchase ${bundleLabel} data bundle for ${contact?.name} (${contact?.number}) on ${contact?.network} from ${buyAccount} account.`);
+      alert(`✓ Purchase confirmed!\n\n${bundleLabel} data bundle for ${contact?.name} (${contact?.number}) on ${contact?.network} from ${buyAccount} account has been processed.`);
     }
 
+    setShowAirtimeConfirmation(false);
     setSelectedContactForBuy(null);
     setBuyAccount('');
     setBuyProductType('');
@@ -339,16 +375,42 @@ export const ParentDashboard: React.FC = () => {
     setElectricityMeters(electricityMeters.filter((m) => m.id !== id));
   };
 
+  const handleBuyElectricity = (meterId: string) => {
+    setSelectedMeterForBuy(meterId);
+    setElectricityAmount('');
+  };
+
+  const handleConfirmElectricityPurchase = () => {
+    const amountValue = Number(electricityAmount);
+    if (!selectedMeterForBuy || !amountValue || amountValue <= 0) return;
+    setShowElectricityConfirmation(true);
+  };
+
+  const handleElectricityPurchaseConfirmed = () => {
+    const meter = electricityMeters.find((m) => m.id === selectedMeterForBuy);
+    const amountValue = Number(electricityAmount);
+    alert(`✓ Purchase confirmed!\n\nElectricity credit of R${amountValue.toFixed(2)} for meter ${meter?.meterNumber} (${meter?.name}) has been processed.`);
+    setShowElectricityConfirmation(false);
+    setSelectedMeterForBuy(null);
+    setElectricityAmount('');
+  };
+
+  const closeElectricityModal = () => {
+    setShowElectricityPage(false);
+    setElectricityTab('buy');
+    setSelectedMeterForBuy(null);
+    setElectricityAmount('');
+    setShowAddMeterForm(false);
+    setNewMeterName('');
+    setNewMeterNumber('');
+  };
+
   // Quick Actions
   const quickActionsAll = [
     {
       id: '1',
       title: 'Emergency Fund Transfer',
-      icon: (
-        <svg className="w-6 h-6 text-rose-500" fill="currentColor" viewBox="0 0 20 20">
-          <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
-        </svg>
-      ),
+      icon: <HomeIcon className="w-6 h-6 text-rose-500" />,
       onClick: () => {
         setSelectedChildId('');
         setEmergencyAmount('');
@@ -358,21 +420,13 @@ export const ParentDashboard: React.FC = () => {
     {
       id: '2',
       title: 'Recurring Auto Payments',
-      icon: (
-        <svg className="w-6 h-6 text-rose-500" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-        </svg>
-      ),
+      icon: <RefreshIcon className="w-6 h-6 text-rose-500" />,
       onClick: () => setShowRecurringModal(true),
     },
     {
       id: '3',
       title: 'Wallet Top-up',
-      icon: (
-        <svg className="w-6 h-6 text-rose-500" fill="currentColor" viewBox="0 0 20 20">
-          <path d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" />
-        </svg>
-      ),
+      icon: <WalletIcon className="w-6 h-6 text-rose-500" />,
       onClick: () => {
         setTopupChildId('');
         setTopupAmount('');
@@ -382,11 +436,7 @@ export const ParentDashboard: React.FC = () => {
     {
       id: '4',
       title: 'Manage Spending Limits',
-      icon: (
-        <svg className="w-6 h-6 text-rose-500" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 108 12H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.381zM10 9.573L5.823 15H10a1 1 0 001-1V9.573zM12 2.427l.823 6H8a1 1 0 00-1 1v3.854l5.823-8.427z" clipRule="evenodd" />
-        </svg>
-      ),
+      icon: <ShieldIcon className="w-6 h-6 text-rose-500" />,
       onClick: () => {
         setShowManageLimitsModal(true);
       },
@@ -400,43 +450,31 @@ export const ParentDashboard: React.FC = () => {
     {
       id: '1',
       title: 'Buy airtime and data',
-      icon: (
-        <svg className="w-6 h-6 text-rose-500" fill="currentColor" viewBox="0 0 20 20">
-          <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
-        </svg>
-      ),
+      icon: <SignalIcon className="w-6 h-6 text-rose-500" />,
       onClick: () => setShowAirtimePage(true),
     },
     {
       id: '2',
       title: 'Buy electricity',
-      icon: (
-        <svg className="w-6 h-6 text-rose-500" fill="currentColor" viewBox="0 0 20 20">
-          <path d="M11.3 1.046A1 1 0 0012 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 108 12H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.381zM10 9.573L5.823 15H10a1 1 0 001-1V9.573zM12 2.427l.823 6H8a1 1 0 00-1 1v3.854l5.823-8.427z" />
-        </svg>
-      ),
+      icon: <LightningBoltIcon className="w-6 h-6 text-rose-500" />,
       onClick: () => setShowElectricityPage(true),
     },
     {
       id: '3',
       title: 'TV',
-      icon: (
-        <svg className="w-6 h-6 text-rose-500" fill="currentColor" viewBox="0 0 20 20">
-          <path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4V5h12v10z" />
-        </svg>
-      ),
+      icon: <TvIcon className="w-6 h-6 text-rose-500" />,
       onClick: () => alert('TV - Coming Soon'),
     },
   ];
 
   // Bottom Navigation Items
   const navItems = [
-    { id: 'home', label: 'Home', isActive: currentTab === 'home', onClick: () => setCurrentTab('home'), icon: (<svg fill="currentColor" viewBox="0 0 20 20"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" /></svg>) },
-    { id: 'payments', label: 'Transfer', isActive: currentTab === 'payments', onClick: () => setCurrentTab('payments'), icon: (<svg fill="currentColor" viewBox="0 0 20 20"><path d="M4 3a1 1 0 011-1h10a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V3zm2 2v10h8V5H6z" /></svg>) },
-    { id: 'wallet', label: 'Wallet', isActive: currentTab === 'wallet', onClick: () => setCurrentTab('wallet'), icon: (<svg fill="currentColor" viewBox="0 0 20 20"><path d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" /></svg>) },
-    { id: 'pay', label: 'Pay', isActive: currentTab === 'pay', onClick: () => setCurrentTab('pay'), icon: (<svg fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" clipRule="evenodd" /></svg>) },
-    { id: 'rewards', label: 'Rewards', isActive: currentTab === 'rewards', onClick: () => setCurrentTab('rewards'), icon: (<svg fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>) },
-    { id: 'settings', label: 'Settings', isActive: currentTab === 'settings', onClick: () => setCurrentTab('settings'), icon: (<svg fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" /></svg>) },
+    { id: 'home', label: 'Home', isActive: currentTab === 'home', onClick: () => setCurrentTab('home'), icon: <HomeIcon className="w-5 h-5" /> },
+    { id: 'payments', label: 'Transfer', isActive: currentTab === 'payments', onClick: () => setCurrentTab('payments'), icon: <TransferIcon className="w-5 h-5" /> },
+    { id: 'wallet', label: 'Wallet', isActive: currentTab === 'wallet', onClick: () => setCurrentTab('wallet'), icon: <WalletIcon className="w-5 h-5" /> },
+    { id: 'pay', label: 'Pay', isActive: currentTab === 'pay', onClick: () => setCurrentTab('pay'), icon: <PlayIcon className="w-5 h-5" /> },
+    { id: 'rewards', label: 'Rewards', isActive: currentTab === 'rewards', onClick: () => setCurrentTab('rewards'), icon: <StarIcon className="w-5 h-5" /> },
+    { id: 'settings', label: 'Settings', isActive: currentTab === 'settings', onClick: () => setCurrentTab('settings'), icon: <CogIcon className="w-5 h-5" /> },
   ];
 
   const renderContent = () => {
@@ -543,11 +581,16 @@ export const ParentDashboard: React.FC = () => {
           selectedDataBundle={selectedDataBundle}
           setSelectedDataBundle={setSelectedDataBundle}
           handleConfirmBuyAirtime={handleConfirmBuyAirtime}
+          showAirtimeConfirmation={showAirtimeConfirmation}
+          handleAirtimePurchaseConfirmed={handleAirtimePurchaseConfirmed}
           mockAirtimeHistory={mockAirtimeHistory}
           dataBundlesByNetwork={dataBundlesByNetwork}
         />
       ) : showElectricityPage ? (
         <DashboardElectricity
+          electricityTab={electricityTab}
+          setElectricityTab={setElectricityTab}
+          closeElectricityModal={closeElectricityModal}
           showAddMeterForm={showAddMeterForm}
           setShowAddMeterForm={setShowAddMeterForm}
           newMeterName={newMeterName}
@@ -555,9 +598,17 @@ export const ParentDashboard: React.FC = () => {
           newMeterNumber={newMeterNumber}
           setNewMeterNumber={setNewMeterNumber}
           electricityMeters={electricityMeters}
-          setShowElectricityPage={setShowElectricityPage}
           handleAddMeter={handleAddMeter}
           handleDeleteMeter={handleDeleteMeter}
+          selectedMeterForBuy={selectedMeterForBuy}
+          setSelectedMeterForBuy={setSelectedMeterForBuy}
+          electricityAmount={electricityAmount}
+          setElectricityAmount={setElectricityAmount}
+          showElectricityConfirmation={showElectricityConfirmation}
+          handleBuyElectricity={handleBuyElectricity}
+          handleConfirmElectricityPurchase={handleConfirmElectricityPurchase}
+          handleElectricityPurchaseConfirmed={handleElectricityPurchaseConfirmed}
+          mockElectricityHistory={mockElectricityHistory}
         />
       ) : (
         <div className="min-h-screen bg-slate-50 text-slate-900">

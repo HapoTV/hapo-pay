@@ -230,7 +230,15 @@ export default function ParentSignupScreen() {
                 required
               />
               <span>
-                I agree to the <span className="font-semibold text-rose-500">Terms & Conditions</span>
+                I agree to the{' '}
+                <a
+                  href="/docs/HapoPay_Terms___Conditions_.docx.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-rose-500 underline"
+                >
+                  Terms & Conditions
+                </a>
               </span>
             </label>
 

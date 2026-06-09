@@ -1,4 +1,6 @@
 import React from 'react';
+import { Logo } from '../../../components/Logo';
+import { CloseIcon } from '../../../components/icons';
 import type { ParentUser } from '../types';
 
 type Contact = { id: string; number: string; name: string; network: string };
@@ -33,6 +35,8 @@ interface DashboardAirtimeProps {
   selectedDataBundle: string;
   setSelectedDataBundle: (value: string) => void;
   handleConfirmBuyAirtime: () => void;
+  showAirtimeConfirmation: boolean;
+  handleAirtimePurchaseConfirmed: () => void;
   mockAirtimeHistory: Array<{ id: string; number: string; type: string; amount: number; date: string; status: string }>;
   dataBundlesByNetwork: DataBundlesByNetwork;
 }
@@ -65,19 +69,24 @@ export const DashboardAirtime: React.FC<DashboardAirtimeProps> = ({
   selectedDataBundle,
   setSelectedDataBundle,
   handleConfirmBuyAirtime,
+  showAirtimeConfirmation,
+  handleAirtimePurchaseConfirmed,
   mockAirtimeHistory,
   dataBundlesByNetwork,
 }) => {
+  const contact = contacts.find((c) => c.id === selectedContactForBuy);
+  const bundleLabel = dataBundlesByNetwork[contact?.network || '']?.find((b) => b.id === selectedDataBundle)?.label;
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <nav className="sticky top-0 z-50 bg-gradient-to-r from-rose-500 to-purple-600 text-white px-6 py-4 shadow-lg">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center">
-            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white/20 text-slate-900 font-bold">Logo</div>
+            <Logo className="h-10 w-10 rounded-full bg-white/20 p-2 object-contain" alt="HapoPay logo" />
           </div>
           <div className="text-center"><h1 className="text-lg font-bold">Buy Airtime & Data</h1></div>
           <button onClick={closeAirtimeModal} className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-full text-sm font-bold transition">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            <CloseIcon className="w-5 h-5" />
             Close
           </button>
         </div>
@@ -217,6 +226,99 @@ export const DashboardAirtime: React.FC<DashboardAirtimeProps> = ({
           )}
         </main>
       </div>
+
+      {/* Airtime Confirmation Modal */}
+      {showAirtimeConfirmation && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-rose-500 text-white px-6 py-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold">Confirm Purchase Details</h2>
+              <button onClick={() => { setSelectedContactForBuy(null); }} className="text-white hover:bg-rose-600 rounded-full p-1">
+                <CloseIcon className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Disclaimer Banner */}
+              <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded">
+                <p className="text-xs font-semibold text-amber-900 mb-1">⚠️ IMPORTANT DISCLAIMER</p>
+                <p className="text-xs text-amber-800">Please verify all details carefully before confirming. Once confirmed, this transaction cannot be reversed. Make sure you entered the correct phone number.</p>
+              </div>
+
+              {/* Purchase Details */}
+              <div className="space-y-3 bg-slate-50 p-4 rounded-xl">
+                <div>
+                  <p className="text-xs font-medium text-slate-600">RECIPIENT</p>
+                  <p className="text-sm font-semibold text-slate-900">{contact?.name}</p>
+                  <p className="text-xs text-slate-600">{contact?.number}</p>
+                </div>
+
+                <div className="border-t border-slate-200 pt-3">
+                  <p className="text-xs font-medium text-slate-600">NETWORK</p>
+                  <p className="text-sm font-semibold text-slate-900">{contact?.network}</p>
+                </div>
+
+                <div className="border-t border-slate-200 pt-3">
+                  <p className="text-xs font-medium text-slate-600">PRODUCT TYPE</p>
+                  <p className="text-sm font-semibold text-slate-900">{buyProductType}</p>
+                </div>
+
+                <div className="border-t border-slate-200 pt-3">
+                  <p className="text-xs font-medium text-slate-600">
+                    {buyProductType === 'Airtime' ? 'AMOUNT' : 'DATA BUNDLE'}
+                  </p>
+                  <p className="text-sm font-semibold text-slate-900">
+                    {buyProductType === 'Airtime' ? `R${Number(airtimeAmount).toFixed(2)}` : bundleLabel}
+                  </p>
+                </div>
+
+                <div className="border-t border-slate-200 pt-3">
+                  <p className="text-xs font-medium text-slate-600">PAYMENT FROM</p>
+                  <p className="text-sm font-semibold text-slate-900">{buyAccount}</p>
+                </div>
+              </div>
+
+              {/* Verification Checkboxes */}
+              <div className="space-y-2 bg-blue-50 p-4 rounded-xl">
+                <div className="flex items-start gap-2">
+                  <input type="checkbox" id="verify-number" className="mt-1 h-4 w-4 rounded text-blue-600" />
+                  <label htmlFor="verify-number" className="text-xs text-slate-700">
+                    I have verified the phone number is correct
+                  </label>
+                </div>
+                <div className="flex items-start gap-2">
+                  <input type="checkbox" id="verify-amount" className="mt-1 h-4 w-4 rounded text-blue-600" />
+                  <label htmlFor="verify-amount" className="text-xs text-slate-700">
+                    I have confirmed the amount/bundle is what I want to purchase
+                  </label>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2 pt-4">
+                <button
+                  onClick={() => {
+                    setSelectedContactForBuy(null);
+                    setBuyAccount('');
+                    setBuyProductType('');
+                    setAirtimeAmount('');
+                    setSelectedDataBundle('');
+                  }}
+                  className="flex-1 rounded-full border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAirtimePurchaseConfirmed}
+                  className="flex-1 rounded-full bg-rose-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-600"
+                >
+                  Confirm & Pay
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
