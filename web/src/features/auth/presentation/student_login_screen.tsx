@@ -10,6 +10,7 @@ export default function StudentLoginScreen() {
     e.preventDefault();
     // TODO: Implement actual authentication logic
     console.log("Student sign in:", { email, password });
+    navigate("/student");
   };
 
   return (

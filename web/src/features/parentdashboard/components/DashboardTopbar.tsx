@@ -20,14 +20,12 @@ export const DashboardTopbar: React.FC<DashboardTopbarProps> = ({
   return (
     <nav className="sticky top-0 z-50 bg-gradient-to-r from-rose-500 to-purple-600 text-white px-6 py-4 shadow-lg">
       <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center h-10 overflow-visible">
-            <Logo className="h-14 w-14 -mt-2 object-contain" alt="HapoPay logo" />
-          </div>
-
+        <div className="flex items-center h-10 overflow-visible">
+          <Logo className="h-14 w-14 -mt-2 object-contain" alt="HapoPay logo" />
+        </div>
         <div className="text-center">
           <h1 className="text-lg font-bold">{title}</h1>
         </div>
-
         <div className="flex items-center gap-4">
           {onClose ? (
             <button
