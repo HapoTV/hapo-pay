@@ -23,8 +23,6 @@ export const StudentDashboard: React.FC = () => {
     const navigate = useNavigate();
     const clearAuth = useAuthStore((state) => state.clearAuth);
     const [currentTab, setCurrentTab] = useState<TabType>('home');
-    const [_showNotifications, setShowNotifications] = useState(false);
-    const [_showSearchNotice, setShowSearchNotice] = useState(false);
 
     const handleLogout = () => {
         clearAuth();
@@ -97,8 +95,8 @@ export const StudentDashboard: React.FC = () => {
         <div className="min-h-screen bg-slate-50 text-slate-900">
             <DashboardTopbar
                 title="Student Dashboard"
-                onSearch={() => setShowSearchNotice(true)}
-                onToggleNotifications={() => setShowNotifications((v) => !v)}
+                onSearch={() => { }}
+                onToggleNotifications={() => { }}
                 onLogout={handleLogout}
             />
             <div className="flex flex-col md:flex-row">
