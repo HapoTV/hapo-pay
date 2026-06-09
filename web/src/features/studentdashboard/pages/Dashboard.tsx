@@ -23,8 +23,8 @@ export const StudentDashboard: React.FC = () => {
     const navigate = useNavigate();
     const clearAuth = useAuthStore((state) => state.clearAuth);
     const [currentTab, setCurrentTab] = useState<TabType>('home');
-    const [showNotifications, setShowNotifications] = useState(false);
-    const [showSearchNotice, setShowSearchNotice] = useState(false);
+    const [_showNotifications, setShowNotifications] = useState(false);
+    const [_showSearchNotice, setShowSearchNotice] = useState(false);
 
     const handleLogout = () => {
         clearAuth();
