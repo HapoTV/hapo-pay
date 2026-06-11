@@ -1,6 +1,7 @@
 # apps/admin_panel/serializers.py
 from rest_framework import serializers
-from .models import SystemConfig, AuditLog, FraudAlert
+from .models import SystemConfig, AuditLog
+from apps.payments.models import FraudAlert
 from apps.accounts.models import User
 from apps.wallets.models import Transaction
 

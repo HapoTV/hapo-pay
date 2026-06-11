@@ -6,7 +6,8 @@ from rest_framework.views import APIView
 from django.db.models import Sum, Count, Q
 from django.utils import timezone
 from datetime import timedelta
-from .models import SystemConfig, AuditLog, FraudAlert
+from .models import SystemConfig, AuditLog
+from apps.payments.models import FraudAlert
 from .serializers import (
     SystemConfigSerializer, AuditLogSerializer, FraudAlertSerializer,
     UserManagementSerializer, PlatformAnalyticsSerializer
