@@ -1,112 +1,192 @@
 import React, { useState } from 'react';
-
-interface Transaction {
-  id: string;
-  type: 'credit' | 'debit';
-  amount: number;
-  description: string;
-  date: Date;
-  childName?: string;
-}
+import {
+  Wallet,
+  Receipt,
+  Calendar,
+  AlertCircle,
+} from 'lucide-react';
 
 export const WalletPage: React.FC = () => {
-  const [transactions] = useState<Transaction[]>([
-    {
-      id: '1',
-      type: 'debit',
-      amount: 250,
-      description: 'Thabo - School Payment',
-      date: new Date('2024-06-01'),
-      childName: 'Thabo',
-    },
-    {
-      id: '2',
-      type: 'debit',
-      amount: 180,
-      description: 'Nomsa - Electricity Top-up',
-      date: new Date('2024-05-28'),
-      childName: 'Nomsa',
-    },
-    {
-      id: '3',
-      type: 'credit',
-      amount: 500,
-      description: 'Added funds to family wallet',
-      date: new Date('2024-05-25'),
-    },
-  ]);
+  const [activeFilter, setActiveFilter] = useState('month');
+  const [showSmartReports, setShowSmartReports] = useState(false);
 
   return (
-    <div className="pb-20 md:pb-0">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-pink-500 to-purple-600 text-white p-6 rounded-b-3xl mb-6">
-        <h1 className="text-2xl font-bold mb-2">Wallet</h1>
-        <p className="text-pink-100">Manage your family finances</p>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4">
-        {/* Wallet Balance Card */}
-        <div className="bg-white rounded-2xl p-6 mb-6 shadow-sm">
-          <p className="text-gray-600 text-sm font-medium mb-2">Available Balance</p>
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">R 365.00</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <button className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg font-medium transition">
-              Add Funds
-            </button>
-            <button className="border-2 border-pink-500 text-pink-500 hover:bg-pink-50 px-4 py-2 rounded-lg font-medium transition">
-              Withdraw
+    <div className="min-h-screen bg-slate-50 text-slate-900">
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        {/* Header */}
+        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm mb-8">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.28em] text-rose-500">Wallet</p>
+              <p className="mt-3 text-slate-600 max-w-2xl leading-relaxed">Manage your children finances here</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowSmartReports((current) => !current)}
+              className="inline-flex items-center justify-center rounded-2xl bg-rose-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-rose-600"
+            >
+              {showSmartReports ? 'Hide Smart Reports' : 'View Smart Reports'}
             </button>
           </div>
         </div>
 
-        {/* Transaction History */}
-        <div>
-          <h3 className="text-xl font-bold text-gray-900 mb-4">Transaction History</h3>
-          <div className="space-y-3">
-            {transactions.map((transaction) => (
-              <div
-                key={transaction.id}
-                className="bg-white rounded-xl p-4 flex items-center justify-between shadow-sm hover:shadow-md transition"
-              >
-                <div className="flex items-center gap-4">
-                  <div
-                    className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                      transaction.type === 'credit'
-                        ? 'bg-green-100'
-                        : 'bg-red-100'
-                    }`}
-                  >
-                    {transaction.type === 'credit' ? (
-                      <svg className="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414-1.414L13.586 7H12z" clipRule="evenodd" />
-                      </svg>
-                    ) : (
-                      <svg className="w-6 h-6 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M8 13a1 1 0 110 2H3a1 1 0 01-1-1V9a1 1 0 112 0v3.586l4.293-4.293a1 1 0 011.414 1.414L6.414 13H8z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900">{transaction.description}</p>
-                    <p className="text-sm text-gray-500">
-                      {transaction.date.toLocaleDateString('en-ZA')}
-                    </p>
-                  </div>
-                </div>
-                <span
-                  className={`font-bold text-lg ${
-                    transaction.type === 'credit'
-                      ? 'text-green-600'
-                      : 'text-red-600'
-                  }`}
-                >
-                  {transaction.type === 'credit' ? '+' : '-'}R{transaction.amount.toFixed(2)}
-                </span>
+        {showSmartReports && (
+          <div className="bg-white rounded-[2rem] border border-slate-200 p-6 shadow-sm mb-8">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-slate-950">Smart Reports</h2>
+                <p className="mt-2 text-sm text-slate-600 max-w-2xl leading-relaxed">
+                  Get a quick snapshot of your wallet performance and recent spending trends.
+                </p>
               </div>
-            ))}
+            </div>
+            <div className="mt-6 grid gap-4 sm:grid-cols-3">
+              <div className="rounded-[1.75rem] bg-slate-50 p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Family balance</p>
+                <p className="mt-3 text-2xl font-medium text-slate-950">R0.00</p>
+              </div>
+              <div className="rounded-[1.75rem] bg-slate-50 p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Savings outlook</p>
+                <p className="mt-3 text-2xl font-medium text-slate-950">Stable</p>
+              </div>
+              <div className="rounded-[1.75rem] bg-slate-50 p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Next review</p>
+                <p className="mt-3 text-2xl font-medium text-slate-950">In 7 days</p>
+              </div>
+            </div>
           </div>
+        )}
+
+      {/* Main Wallet Card */}
+      <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-8 mb-8">
+        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500 text-white">
+            <Wallet size={20} />
+           </div>
+
+            <div>
+              <p className="text-sm font-medium uppercase tracking-[0.18em] text-slate-500">
+                This Month
+              </p>
+
+              <h2 className="mt-2 text-3xl font-semibold text-slate-950">
+                R0.00
+              </h2>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Statistics Cards */}
+      <div className="grid gap-6 md:grid-cols-3 mb-10">
+        <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500 text-white">
+            <Wallet size={18} />
+          </div>
+        <div>
+  <h3 className="text-xl font-semibold text-slate-950">0</h3>
+  <p className="mt-1 text-sm text-slate-500">
+    Total Transactions
+  </p>
+</div>
+          </div>
+        </div>
+
+        <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500 text-white">
+  <AlertCircle size={18} />
+</div>
+
+<div>
+  <h3 className="text-xl font-semibold text-slate-950">
+    R0.00
+  </h3>
+  <p className="mt-1 text-sm text-slate-500">
+    This Month
+  </p>
+</div>
+          </div>
+        </div>
+
+        <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500 text-white">
+  <Calendar size={18} />
+</div>
+
+<div>
+  <h3 className="text-xl font-semibold text-slate-950">
+    R0.00
+  </h3>
+  <p className="mt-1 text-sm text-slate-500">
+    This Week
+  </p>
+</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Transaction History */}
+      <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm min-h-[420px]">
+        <h2 className="text-2xl font-bold text-slate-950 mb-8">
+         Detailed Transaction History
+        </h2>
+
+        {/* Filters */}
+        <div className="flex flex-wrap gap-3 mb-16">
+          <button
+            onClick={() => setActiveFilter('all')}
+            className={`rounded-2xl border px-5 py-3 text-sm font-semibold transition ${
+              activeFilter === 'all'
+                ? 'bg-rose-500 text-white border-rose-500'
+                : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+            }`}
+          >
+            All
+          </button>
+
+          <button
+            onClick={() => setActiveFilter('week')}
+            className={`rounded-2xl border px-5 py-3 text-sm font-semibold transition ${
+              activeFilter === 'week'
+                ? 'bg-rose-500 text-white border-rose-500'
+                : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+            }`}
+          >
+            This Week
+          </button>
+
+          <button
+            onClick={() => setActiveFilter('month')}
+            className={`rounded-2xl border px-5 py-3 text-sm font-semibold transition ${
+              activeFilter === 'month'
+                ? 'bg-rose-500 text-white border-rose-500'
+                : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+            }`}
+          >
+            This Month
+          </button>
+        </div>
+
+        {/* Empty State */}
+        <div className="flex flex-col items-center justify-center rounded-[1.75rem] bg-slate-50 p-16 text-center">
+          <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-sm">
+        <Receipt className="text-slate-400" size={28} />
+       </div>
+
+     <h3 className="text-xl font-semibold text-slate-950 mb-3">
+      No activities yet
+      </h3>
+
+          <p className="max-w-xl text-sm leading-7 text-slate-500">
+            Your activity history will appear here when you make payments or transfers.
+          </p>
         </div>
       </div>
     </div>
+  </div>
   );
 };

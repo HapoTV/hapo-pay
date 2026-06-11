@@ -1,133 +1,223 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Gift } from 'lucide-react';
 
-interface Reward {
-  id: string;
-  title: string;
-  description: string;
-  points: number;
-  icon: string;
-  category: 'cashback' | 'referral' | 'milestone';
-}
+const redeemedFilters = [
+  { id: 'all', label: 'All children' },
+  { id: 'week', label: 'This Week' },
+  { id: 'month', label: 'This Month' },
+];
 
 export const RewardsPage: React.FC = () => {
-  const rewards: Reward[] = [
-    {
-      id: '1',
-      title: 'Cashback Bonus',
-      description: 'Earn 1% cashback on all transfers',
-      points: 150,
-      icon: '💰',
-      category: 'cashback',
-    },
-    {
-      id: '2',
-      title: 'Referral Reward',
-      description: 'Invite a friend and earn R50 bonus',
-      points: 2,
-      icon: '👥',
-      category: 'referral',
-    },
-    {
-      id: '3',
-      title: 'Milestone Achievement',
-      description: 'Manage 3+ children accounts',
-      points: 500,
-      icon: '🎯',
-      category: 'milestone',
-    },
-  ];
+  const [activeTab, setActiveTab] = useState<'active' | 'past'>('active');
+  const [selectedFilter, setSelectedFilter] = useState<'all' | 'week' | 'month'>('all');
+  const [rewards, setRewards] = useState([
+  {
+    id: '1',
+    title: 'Extra R5 Allowance',
+    description: 'Earn an extra R5 allowance.',
+    points: 500,
+    active: true,
+  },
+]);
 
-  const earnedRewards = [
-    {
-      id: '1',
-      name: 'First Transfer',
-      amount: 10,
-      date: '2024-05-20',
-    },
-    {
-      id: '2',
-      name: 'Weekly Bonus',
-      amount: 25,
-      date: '2024-05-15',
-    },
-  ];
+const [redeemedRewards] = useState([
+  {
+    id: '1',
+    child: 'Sarah',
+    reward: 'Movie Night',
+    points: 300,
+    date: '2 days ago',
+  },
+]);
 
-  return (
-    <div className="pb-20 md:pb-0">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-pink-500 to-purple-600 text-white p-6 rounded-b-3xl mb-6">
-        <h1 className="text-2xl font-bold mb-2">Rewards</h1>
-        <p className="text-pink-100">Earn points and get exclusive benefits</p>
+const activeRewardCount = rewards.filter(
+  (reward) => reward.active
+).length;
+
+  const handleAddReward = () => {
+  const title = prompt('Reward title');
+
+  if (!title) return;
+
+  const points = Number(prompt('Points required'));
+
+  if (!points) return;
+
+  const newReward = {
+    id: Date.now().toString(),
+    title,
+    description: 'Custom reward',
+    points,
+    active: true,
+  };
+
+  setRewards((prev) => [newReward, ...prev]);
+};
+const toggleRewardStatus = (id: string) => {
+  setRewards((prev) =>
+    prev.map((reward) =>
+      reward.id === id
+        ? { ...reward, active: !reward.active }
+        : reward
+    )
+  );
+};
+
+  const renderRewardsContent = () => {
+    if (activeTab === 'active') {
+      return (
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-500 text-white shadow-sm">
+                <Gift size={18} />
+              </div>
+              <span className="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Example</span>
+            </div>
+
+            <h3 className="mt-4 text-base font-semibold text-slate-950">Example: Extra R5 Allowance</h3>
+            <p className="mt-3 text-sm leading-6 text-slate-600">This is a sample to show how rewards will look.</p>
+            <p className="mt-4 text-sm text-slate-600">
+              Cost: <span className="font-semibold text-sky-600">500 points</span>
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Redeemed rewards</p>
+            <p className="mt-1 text-sm text-slate-600">Filter by child or time period.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {redeemedFilters.map((filter) => {
+              const isActive = selectedFilter === filter.id;
+              return (
+                <button
+                  key={filter.id}
+                  type="button"
+                  onClick={() => setSelectedFilter(filter.id as 'all' | 'week' | 'month')}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${isActive ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                >
+                  {filter.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="space-y-4">
+  {redeemedRewards.length > 0 ? (
+    redeemedRewards.map((reward) => (
+      <div
+        key={reward.id}
+        className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-slate-900">
+              {reward.reward}
+            </h3>
+
+            <p className="text-sm text-slate-500">
+              Redeemed by {reward.child}
+            </p>
+          </div>
+
+          <div className="text-right">
+            <p className="font-semibold text-rose-500">
+              {reward.points} points
+            </p>
+
+            <p className="text-xs text-slate-500">
+              {reward.date}
+            </p>
+          </div>
+        </div>
+      </div>
+    ))
+  ) : (
+    <div className="rounded-[2rem] border border-slate-200 bg-slate-50 p-12 text-center">
+      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-rose-500 text-white shadow-sm">
+        <Gift size={22} />
       </div>
 
-      <div className="max-w-7xl mx-auto px-4">
-        {/* Points Card */}
-        <div className="bg-white rounded-2xl p-6 mb-8 shadow-sm border-l-4 border-pink-500">
-          <div className="flex items-end justify-between">
+      <h3 className="mt-6 text-xl font-semibold text-slate-950">
+        No Redeemed Rewards Yet
+      </h3>
+
+      <p className="mt-3 text-sm text-slate-600 max-w-xl mx-auto">
+        When your children redeem rewards, they will appear here.
+      </p>
+    </div>
+  )}
+</div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-900">
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm mb-8">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.28em] text-rose-500">Rewards Management</p>
+            <p className="mt-3 text-slate-600 max-w-2xl leading-relaxed">Create and manage rewards for your children</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-[2rem] border border-slate-200 p-6 shadow-sm mb-8">
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500 text-white shadow-sm">
+                <Gift size={20} />
+              </div>
+              <div>
+                <p className="text-sm font-medium uppercase tracking-[0.18em] text-slate-500">Active Rewards</p>
+                <h2 className="mt-1 text-3xl font-bold text-slate-950">{activeRewardCount}</h2>
+              </div>
+            </div>
+            <div className="text-sm text-slate-500">Manage your reward catalog and approve redemptions.</div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-[2rem] border border-slate-200 p-6 shadow-sm">
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between mb-6">
             <div>
-              <p className="text-gray-600 text-sm font-medium mb-2">Your Reward Points</p>
-              <h2 className="text-4xl font-bold text-gray-900">685</h2>
+              <h2 className="text-lg font-semibold text-slate-950">Manage Rewards Store</h2>
             </div>
-            <div className="text-right">
-              <p className="text-gray-600 text-sm mb-2">Equivalent to</p>
-              <p className="text-2xl font-bold text-pink-500">R68.50</p>
+            <button
+              type="button"
+              onClick={handleAddReward}
+              className="inline-flex items-center gap-2 rounded-xl bg-rose-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-rose-600"
+            >
+              + Add Reward
+            </button>
+          </div>
+
+          <div className="border-b border-slate-200 pb-4 mb-6">
+            <div className="flex flex-wrap gap-6 text-sm font-semibold">
+              <button
+                type="button"
+                onClick={() => setActiveTab('active')}
+                className={`pb-3 ${activeTab === 'active' ? 'text-rose-500 border-b-2 border-rose-500' : 'text-slate-500 hover:text-slate-900'}`}
+              >
+                Active Rewards
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('past')}
+                className={`pb-3 ${activeTab === 'past' ? 'text-rose-500 border-b-2 border-rose-500' : 'text-slate-500 hover:text-slate-900'}`}
+              >
+                Past Rewards (Redeemed)
+              </button>
             </div>
           </div>
-        </div>
 
-        {/* Active Rewards */}
-        <div className="mb-8">
-          <h3 className="text-xl font-bold text-gray-900 mb-4">Active Rewards</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {rewards.map((reward) => (
-              <div
-                key={reward.id}
-                className="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition"
-              >
-                <div className="text-4xl mb-3">{reward.icon}</div>
-                <h4 className="font-semibold text-gray-900 mb-1">{reward.title}</h4>
-                <p className="text-sm text-gray-600 mb-4">{reward.description}</p>
-                <div className="flex items-center justify-between">
-                  <span className="inline-block bg-pink-100 text-pink-600 px-3 py-1 rounded-full text-xs font-semibold">
-                    +{reward.points} pts
-                  </span>
-                  <button className="text-pink-500 hover:text-pink-600 font-medium text-sm">
-                    Claim →
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Earned Rewards */}
-        <div className="mb-8">
-          <h3 className="text-xl font-bold text-gray-900 mb-4">Earned Rewards</h3>
-          <div className="space-y-3">
-            {earnedRewards.map((reward) => (
-              <div
-                key={reward.id}
-                className="bg-white rounded-xl p-4 flex items-center justify-between shadow-sm"
-              >
-                <div>
-                  <p className="font-semibold text-gray-900">{reward.name}</p>
-                  <p className="text-sm text-gray-600">{reward.date}</p>
-                </div>
-                <span className="text-lg font-bold text-green-600">+{reward.amount} pts</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* How It Works */}
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
-          <h3 className="font-bold text-gray-900 mb-3">How Rewards Work</h3>
-          <ul className="space-y-2 text-sm text-gray-700">
-            <li>✓ Earn 1 point for every R1 spent</li>
-            <li>✓ Redeem 10 points = R1 cashback</li>
-            <li>✓ Bonus points for referrals</li>
-            <li>✓ Special rewards for milestones</li>
-          </ul>
+          {renderRewardsContent()}
         </div>
       </div>
     </div>

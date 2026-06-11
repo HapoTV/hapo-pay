@@ -34,6 +34,8 @@ import {
   CogIcon,
 } from '@/components/icons';
 
+import { WalletPage } from './Wallet';
+import { RewardsPage } from './Rewards';
 // Mock data for development
 const mockParentData = {
   id: 'parent-1',
@@ -513,27 +515,13 @@ export const ParentDashboard: React.FC = () => {
         );
 
       case 'wallet':
-        return (
-          <div className="pb-20 md:pb-0 max-w-7xl mx-auto px-4 py-8">
-            <h2 className="text-2xl font-bold mb-4">Wallet</h2>
-            <div className="bg-white rounded-xl p-8 text-center">
-              <p className="text-slate-600">Wallet feature coming soon</p>
-            </div>
-          </div>
-        );
+        return <WalletPage />;
 
       case 'pay':
         return <PaySection payments={mockQrPayments} />;
 
       case 'rewards':
-        return (
-          <div className="pb-20 md:pb-0 max-w-7xl mx-auto px-4 py-8">
-            <h2 className="text-2xl font-bold mb-4">Rewards</h2>
-            <div className="bg-white rounded-xl p-8 text-center">
-              <p className="text-slate-600">Rewards feature coming soon</p>
-            </div>
-          </div>
-        );
+        return <RewardsPage />;
 
       case 'settings':
         return (
