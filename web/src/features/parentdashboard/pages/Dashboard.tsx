@@ -182,6 +182,17 @@ export const ParentDashboard: React.FC = () => {
   // Airtime/Electricity Confirmation states
   const [showAirtimeConfirmation, setShowAirtimeConfirmation] = useState(false);
 
+  // Profile page states
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+  const [appNotificationsEnabled, setAppNotificationsEnabled] = useState(true);
+  const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(true);
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+
   const handleLogout = () => {
     clearAuth();
     navigate('/login');
@@ -469,6 +480,76 @@ export const ParentDashboard: React.FC = () => {
     },
   ];
 
+  // Profile handlers
+  const handleEditProfile = () => {
+    setShowEditProfileModal(true);
+  };
+
+  const closeEditProfileModal = () => {
+    setShowEditProfileModal(false);
+  };
+
+  const handleSaveProfileChanges = () => {
+    alert('Profile updated successfully!');
+    closeEditProfileModal();
+  };
+
+  const handleDeleteAccount = () => {
+    setShowDeleteAccountModal(true);
+  };
+
+  const handleConfirmDeleteAccount = () => {
+    alert(`✓ Account deletion initiated.\n\nYour account and all associated children accounts have been permanently deleted.\n\nThis action cannot be undone.`);
+    setShowDeleteAccountModal(false);
+    // In a real app, this would call an API to delete the account
+    // navigate('/login');
+  };
+
+  // Change password handlers (moved to component scope)
+  const handleOpenChangePassword = () => {
+    setPasswordError('');
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setShowChangePasswordModal(true);
+  };
+
+  const handleCloseChangePassword = () => {
+    setShowChangePasswordModal(false);
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setPasswordError('');
+  };
+
+  const handleSaveNewPassword = () => {
+    // Validation
+    if (!currentPassword) {
+      setPasswordError('Please enter your current password.');
+      return;
+    }
+    if (!newPassword) {
+      setPasswordError('Please enter a new password.');
+      return;
+    }
+    if (newPassword.length < 8) {
+      setPasswordError('New password must be at least 8 characters long.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('New passwords do not match.');
+      return;
+    }
+    if (currentPassword === newPassword) {
+      setPasswordError('New password must be different from current password.');
+      return;
+    }
+
+    // Success
+    alert('✓ Password changed successfully!');
+    handleCloseChangePassword();
+  };
+
   // Bottom Navigation Items
   const navItems = [
     { id: 'home', label: 'Home', isActive: currentTab === 'home', onClick: () => setCurrentTab('home'), icon: <HomeIcon className="w-5 h-5" /> },
@@ -476,7 +557,7 @@ export const ParentDashboard: React.FC = () => {
     { id: 'wallet', label: 'Wallet', isActive: currentTab === 'wallet', onClick: () => setCurrentTab('wallet'), icon: <WalletIcon className="w-5 h-5" /> },
     { id: 'pay', label: 'Pay', isActive: currentTab === 'pay', onClick: () => setCurrentTab('pay'), icon: <PlayIcon className="w-5 h-5" /> },
     { id: 'rewards', label: 'Rewards', isActive: currentTab === 'rewards', onClick: () => setCurrentTab('rewards'), icon: <StarIcon className="w-5 h-5" /> },
-    { id: 'settings', label: 'Settings', isActive: currentTab === 'settings', onClick: () => setCurrentTab('settings'), icon: <CogIcon className="w-5 h-5" /> },
+    { id: 'settings', label: 'Profile', isActive: currentTab === 'settings', onClick: () => setCurrentTab('settings'), icon: <CogIcon className="w-5 h-5" /> },
   ];
 
   const renderContent = () => {
@@ -525,10 +606,131 @@ export const ParentDashboard: React.FC = () => {
 
       case 'settings':
         return (
-          <div className="pb-20 md:pb-0 max-w-7xl mx-auto px-4 py-8">
-            <h2 className="text-2xl font-bold mb-4">Settings</h2>
-            <div className="bg-white rounded-xl p-8 text-center">
-              <p className="text-slate-600">Settings feature coming soon</p>
+          <div className="pb-16 md:pb-0 px-4 md:px-6 py-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-5">
+              <div>
+                <h1 className="text-2xl font-bold text-slate-900">My Profile</h1>
+                <p className="text-sm text-slate-500 mt-2">View your account information and parent details.</p>
+              </div>
+              <div className="text-sm text-slate-500">Manage your profile and security preferences in one place.</div>
+            </div>
+
+            <div className="bg-white rounded-3xl p-4 shadow-sm mb-5">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-pink-500 text-white text-lg font-bold">
+                    {parentData.name
+                      .split(' ')
+                      .map((part) => part[0])
+                      .join('')
+                      .slice(0, 2)}
+                  </div>
+                  <div>
+                    <p className="text-base font-semibold text-slate-900">{parentData.name}</p>
+                    <p className="text-sm text-slate-500">Parent Account</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-3">
+              <div className="bg-white rounded-3xl p-4 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900">Personal Information</h2>
+                    <p className="text-sm text-slate-500">Your HapoPay parent profile details.</p>
+                  </div>
+                  <button className="rounded-full border border-pink-200 bg-pink-50 px-3 py-1.5 text-xs font-medium text-pink-600 hover:bg-pink-100 transition" onClick={handleEditProfile}>
+                    Edit profile
+                  </button>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-3xl border border-slate-200 p-3">
+                    <p className="text-[11px] text-slate-500">Full Name</p>
+                    <p className="mt-2 text-sm font-medium text-slate-900">{parentData.name}</p>
+                  </div>
+                  <div className="rounded-3xl border border-slate-200 p-3">
+                    <p className="text-[11px] text-slate-500">Email Address</p>
+                    <p className="mt-2 text-sm font-medium text-slate-900">{parentData.email}</p>
+                  </div>
+                  <div className="rounded-3xl border border-slate-200 p-3">
+                    <p className="text-[11px] text-slate-500">Phone Number</p>
+                    <p className="mt-2 text-sm font-medium text-slate-900">+27 71 234 5678</p>
+                  </div>
+                  <div className="rounded-3xl border border-slate-200 p-3">
+                    <p className="text-[11px] text-slate-500">Children Linked</p>
+                    <p className="mt-2 text-sm font-medium text-slate-900">{parentData.children.length}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-3xl p-4 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900">Notifications</h2>
+                    <p className="text-sm text-slate-500">Manage your alert preferences.</p>
+                  </div>
+                  <button className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 transition">
+                    Manage
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between rounded-3xl border border-slate-200 p-3">
+                    <div>
+                      <p className="font-medium text-slate-900">App notifications</p>
+                      <p className="text-xs text-slate-500">Spending alerts and updates.</p>
+                    </div>
+                    <button onClick={() => setAppNotificationsEnabled(!appNotificationsEnabled)} className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium transition ${appNotificationsEnabled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                      {appNotificationsEnabled ? 'On' : 'Off'}
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between rounded-3xl border border-slate-200 p-3">
+                    <div>
+                      <p className="font-medium text-slate-900">Email notifications</p>
+                      <p className="text-xs text-slate-500">Weekly summaries and account alerts.</p>
+                    </div>
+                    <button onClick={() => setEmailNotificationsEnabled(!emailNotificationsEnabled)} className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium transition ${emailNotificationsEnabled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                      {emailNotificationsEnabled ? 'On' : 'Off'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-3xl p-4 shadow-sm">
+                <h2 className="text-lg font-semibold text-slate-900 mb-4">Security</h2>
+                <div className="space-y-3">
+                  <div className="flex flex-col gap-2 rounded-3xl border border-slate-200 p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="font-medium text-slate-900">Change password</p>
+                      <p className="text-xs text-slate-500">Update your password regularly.</p>
+                    </div>
+                    <button onClick={handleOpenChangePassword} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 transition">
+                      Change password
+                    </button>
+                  </div>
+                  <div className="flex flex-col gap-2 rounded-3xl border border-slate-200 p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="font-medium text-slate-900">Two-factor authentication</p>
+                      <p className="text-xs text-slate-500">Require a second verification step when signing in.</p>
+                    </div>
+                    <button className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 transition">
+                      Enable 2FA
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-red-50 rounded-3xl p-4 shadow-sm border border-red-200">
+                <h2 className="text-lg font-semibold text-red-900 mb-4">Danger zone</h2>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-start">
+                  <button className="w-full sm:w-auto rounded-3xl border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-100 transition min-w-[120px] sm:min-w-[130px]">
+                    Logout
+                  </button>
+                  <button className="w-full sm:w-auto rounded-3xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 transition min-w-[120px] sm:min-w-[130px]" onClick={handleDeleteAccount}>
+                    Delete account
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         );
@@ -683,6 +885,133 @@ export const ParentDashboard: React.FC = () => {
             onChangePaymentMethod={setSelectedPaymentMethod}
             onContinue={handleContinueToPayment}
           />
+
+          {/* Edit Profile Modal */}
+          {showEditProfileModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-lg">
+                <h2 className="text-2xl font-bold text-slate-900 mb-4">Edit Profile</h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-900 mb-1">Full Name</label>
+                    <input type="text" defaultValue={parentData.name} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-900 mb-1">Email Address</label>
+                    <input type="email" defaultValue={parentData.email} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-900 mb-1">Phone Number</label>
+                    <input type="tel" defaultValue="+27 71 234 5678" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" />
+                  </div>
+                </div>
+                <div className="flex gap-3 mt-6">
+                  <button onClick={closeEditProfileModal} className="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition">
+                    Cancel
+                  </button>
+                  <button onClick={handleSaveProfileChanges} className="flex-1 rounded-lg bg-pink-500 px-4 py-2 text-sm font-medium text-white hover:bg-pink-600 transition">
+                    Save Changes
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Change Password Modal */}
+          {showChangePasswordModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-lg">
+                <h2 className="text-2xl font-bold text-slate-900 mb-1">Change Password</h2>
+                <p className="text-sm text-slate-500 mb-6">Enter your current and new password</p>
+
+                {passwordError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                    <p className="text-sm text-red-700">{passwordError}</p>
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-900 mb-2">Current Password</label>
+                    <input
+                      type="password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="Enter current password"
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-900 mb-2">New Password</label>
+                    <input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Enter new password (min 8 characters)"
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-900 mb-2">Confirm New Password</label>
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirm new password"
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={handleCloseChangePassword}
+                    className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveNewPassword}
+                    className="flex-1 rounded-lg bg-pink-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-pink-600 transition"
+                  >
+                    Update Password
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Delete Account Confirmation Modal */}
+          {showDeleteAccountModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-lg">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+                    <span className="text-xl text-red-600">⚠️</span>
+                  </div>
+                  <h2 className="text-2xl font-bold text-red-600">Delete Account?</h2>
+                </div>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-red-800 font-medium mb-2">This action cannot be undone.</p>
+                  <p className="text-sm text-red-700">Deleting your account will:</p>
+                  <ul className="text-sm text-red-700 list-disc list-inside mt-2 space-y-1">
+                    <li>Permanently delete your profile</li>
+                    <li>Delete all linked children accounts</li>
+                    <li>Clear all transaction history</li>
+                  </ul>
+                </div>
+                <p className="text-sm text-slate-600 mb-6">Are you sure you want to proceed? This action cannot be undone.</p>
+                <div className="flex gap-3">
+                  <button onClick={() => setShowDeleteAccountModal(false)} className="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition">
+                    Cancel
+                  </button>
+                  <button onClick={handleConfirmDeleteAccount} className="flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition">
+                    Delete Account
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
         </div>
       )}
