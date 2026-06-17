@@ -2,7 +2,7 @@
 from rest_framework import serializers
 from django.utils import timezone
 from .models import Wallet, Transaction, SpendingLimit, MoneyRequest
-from apps.accounts.models import User
+from apps.accounts.models import User, Profile, StudentProfile
 
 
 class WalletSerializer(serializers.ModelSerializer):
@@ -71,3 +71,49 @@ class ApproveMoneyRequestSerializer(serializers.Serializer):
     request_id = serializers.UUIDField()
     action = serializers.ChoiceField(choices=['approve', 'decline'])
     parent_notes = serializers.CharField(max_length=500, required=False)
+
+
+class AddChildSerializer(serializers.Serializer):
+    """Serializer for parent adding a child account"""
+    email = serializers.EmailField()
+    full_name = serializers.CharField(max_length=255)
+    grade = serializers.IntegerField(min_value=1, max_value=12, required=False)
+    school_name = serializers.CharField(max_length=200, required=False)
+    weekly_allowance = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=0, required=False, default=0
+    )
+
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return value
+
+
+class ChildSummarySerializer(serializers.ModelSerializer):
+    """Summary of a child for the parent's children list"""
+    full_name = serializers.CharField(source='profile.full_name', read_only=True)
+    wallet_balance = serializers.SerializerMethodField()
+    school_name = serializers.CharField(source='student_profile.school_name', read_only=True)
+    grade = serializers.IntegerField(source='student_profile.grade', read_only=True)
+    weekly_allowance = serializers.DecimalField(
+        source='student_profile.weekly_allowance',
+        max_digits=10, decimal_places=2, read_only=True
+    )
+    is_account_frozen = serializers.BooleanField(
+        source='student_profile.is_account_frozen', read_only=True
+    )
+
+    class Meta:
+        model = User
+        fields = ('id', 'email', 'full_name', 'grade', 'school_name',
+                  'weekly_allowance', 'wallet_balance', 'is_account_frozen', 'created_at')
+
+    def get_wallet_balance(self, obj):
+        try:
+            return obj.wallet.balance
+        except Exception:
+            return 0
+
+
+class FreezeAccountSerializer(serializers.Serializer):
+    freeze_reason = serializers.CharField(max_length=500)

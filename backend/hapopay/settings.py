@@ -231,3 +231,30 @@ LOGGING = {
 # Email (console backend for development)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = 'noreply@hapopay.com'
+
+# Celery Configuration
+CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND', default='redis://localhost:6379/0')
+CELERY_TIMEZONE = 'Africa/Johannesburg'
+CELERY_TASK_TRACK_STARTED = True
+
+# Celery Beat — Scheduled Tasks
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+    # Reset daily spending limits every day at midnight (SA time)
+    'reset-daily-spending-limits': {
+        'task': 'apps.wallets.tasks.reset_daily_spending_limits',
+        'schedule': crontab(hour=0, minute=0),
+    },
+    # Reset weekly spending limits every Monday at midnight
+    'reset-weekly-spending-limits': {
+        'task': 'apps.wallets.tasks.reset_weekly_spending_limits',
+        'schedule': crontab(hour=0, minute=0, day_of_week=1),
+    },
+    # Reset monthly spending limits on the 1st of every month at midnight
+    'reset-monthly-spending-limits': {
+        'task': 'apps.wallets.tasks.reset_monthly_spending_limits',
+        'schedule': crontab(hour=0, minute=0, day_of_month=1),
+    },
+}
