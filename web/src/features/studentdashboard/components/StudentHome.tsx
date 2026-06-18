@@ -44,14 +44,8 @@ const StudentHome: React.FC<Props> = ({ studentData }) => {
     }, [showQRModal]);
 
     return (
-<<<<<<< Updated upstream
-        <div className="pb-20 md:pb-0 max-w-7xl mx-auto px-4 py-5 space-y-5">
-            {/* Welcome */}
-            <p className="text-base font-semibold text-slate-800">Welcome back, {name}!</p>
-=======
         <div className="pb-20 md:pb-0 max-w-7xl mx-auto px-4 py-6 space-y-6">
             <p className="text-lg font-semibold text-slate-800">Welcome back, {name}!</p>
->>>>>>> Stashed changes
 
             {/* Balance Cards */}
             <div className="grid grid-cols-2 gap-4">
@@ -66,12 +60,7 @@ const StudentHome: React.FC<Props> = ({ studentData }) => {
                     </div>
                     <p className="text-2xl font-bold text-slate-800">{currency}{balance.toFixed(2)}</p>
                 </div>
-<<<<<<< Updated upstream
-
-                <div className="bg-white rounded-3xl border border-slate-200 p-4 shadow-sm">
-=======
                 <div className="bg-white rounded-2xl border-l-4 border-rose-500 p-4 shadow-sm">
->>>>>>> Stashed changes
                     <div className="flex items-center gap-2 mb-2">
                         <div className="bg-rose-100 p-2 rounded-xl">
                             <svg className="w-4 h-4 text-rose-500" fill="currentColor" viewBox="0 0 20 20">
@@ -105,16 +94,8 @@ const StudentHome: React.FC<Props> = ({ studentData }) => {
                             onClick: () => setShowEmergencyModal(true),
                         },
                     ].map((action) => (
-<<<<<<< Updated upstream
-                        <button
-                            key={action.label}
-                            onClick={action.onClick}
-                            className="bg-white rounded-3xl border border-slate-200 p-3 flex flex-col items-center gap-2 shadow-sm hover:shadow-md transition"
-                        >
-=======
                         <button key={action.label} onClick={action.onClick}
                             className="bg-white rounded-2xl border-l-4 border-rose-500 p-3 flex flex-col items-center gap-2 shadow-sm hover:shadow-md transition">
->>>>>>> Stashed changes
                             <div className="bg-rose-100 p-2 rounded-xl">{action.icon}</div>
                             <span className="text-xs text-slate-700 font-medium text-center leading-tight">{action.label}</span>
                         </button>
