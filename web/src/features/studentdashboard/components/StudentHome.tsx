@@ -17,13 +17,13 @@ const StudentHome: React.FC<Props> = ({ studentData }) => {
     const { name, balance, monthlySpending, currency } = studentData;
 
     return (
-        <div className="pb-20 md:pb-0 max-w-7xl mx-auto px-4 py-6 space-y-6">
+        <div className="pb-20 md:pb-0 max-w-7xl mx-auto px-4 py-5 space-y-5">
             {/* Welcome */}
-            <p className="text-lg font-semibold text-slate-800">Welcome back, {name}!</p>
+            <p className="text-base font-semibold text-slate-800">Welcome back, {name}!</p>
 
             {/* Balance Cards */}
             <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white rounded-2xl border-l-4 border-rose-500 p-4 shadow-sm">
+                <div className="bg-white rounded-3xl border border-slate-200 p-4 shadow-sm">
                     <div className="flex items-center gap-2 mb-2">
                         <div className="bg-rose-100 p-2 rounded-xl">
                             <svg className="w-4 h-4 text-rose-500" fill="currentColor" viewBox="0 0 20 20">
@@ -35,7 +35,7 @@ const StudentHome: React.FC<Props> = ({ studentData }) => {
                     <p className="text-2xl font-bold text-slate-800">{currency}{balance.toFixed(2)}</p>
                 </div>
 
-                <div className="bg-white rounded-2xl border-l-4 border-rose-500 p-4 shadow-sm">
+                <div className="bg-white rounded-3xl border border-slate-200 p-4 shadow-sm">
                     <div className="flex items-center gap-2 mb-2">
                         <div className="bg-rose-100 p-2 rounded-xl">
                             <svg className="w-4 h-4 text-rose-500" fill="currentColor" viewBox="0 0 20 20">
@@ -85,7 +85,7 @@ const StudentHome: React.FC<Props> = ({ studentData }) => {
                         <button
                             key={action.label}
                             onClick={action.onClick}
-                            className="bg-white rounded-2xl border-l-4 border-rose-500 p-3 flex flex-col items-center gap-2 shadow-sm hover:shadow-md transition"
+                            className="bg-white rounded-3xl border border-slate-200 p-3 flex flex-col items-center gap-2 shadow-sm hover:shadow-md transition"
                         >
                             <div className="bg-rose-100 p-2 rounded-xl">{action.icon}</div>
                             <span className="text-xs text-slate-700 font-medium text-center leading-tight">{action.label}</span>
@@ -97,28 +97,28 @@ const StudentHome: React.FC<Props> = ({ studentData }) => {
             {/* Recent Activity */}
             <div>
                 <h3 className="text-base font-semibold text-slate-800 mb-3">Recent Activity</h3>
-                <div className="bg-white rounded-2xl p-8 shadow-sm flex flex-col items-center justify-center gap-2">
-                    <div className="bg-slate-100 p-3 rounded-full">
+                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-center">
+                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm">
                         <svg className="w-6 h-6 text-slate-400" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
                         </svg>
                     </div>
                     <p className="text-slate-600 font-medium text-sm">No recent activity</p>
-                    <p className="text-slate-400 text-xs text-center">Your activity from the last 3 days will appear here</p>
+                    <p className="text-slate-400 text-xs mt-2">Your activity from the last 3 days will appear here.</p>
                 </div>
             </div>
 
             {/* Transaction History */}
             <div>
                 <h3 className="text-base font-semibold text-slate-800 mb-3">Transaction History</h3>
-                <div className="bg-white rounded-2xl p-8 shadow-sm flex flex-col items-center justify-center gap-2">
-                    <div className="bg-slate-100 p-3 rounded-full">
+                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-center">
+                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm">
                         <svg className="w-6 h-6 text-slate-400" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
                         </svg>
                     </div>
                     <p className="text-slate-600 font-medium text-sm">No transaction history</p>
-                    <p className="text-slate-400 text-xs text-center">Your transaction history will appear here</p>
+                    <p className="text-slate-400 text-xs mt-2">Your transaction history will appear here.</p>
                 </div>
             </div>
         </div>

@@ -1,10 +1,11 @@
 import React from 'react';
 
 const StudentRewards: React.FC = () => (
-    <div className="pb-20 md:pb-0 max-w-7xl mx-auto px-4 py-8">
-        <h2 className="text-2xl font-bold mb-4">Rewards</h2>
-        <div className="bg-white rounded-xl p-8 text-center shadow-sm">
-            <p className="text-slate-600">Rewards feature coming soon</p>
+    <div className="pb-20 md:pb-0 max-w-7xl mx-auto px-4 py-5">
+        <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-rose-500">Rewards</p>
+            <h2 className="mt-2 text-xl font-semibold text-slate-950">Rewards</h2>
+            <p className="mt-3 text-sm leading-6 text-slate-600">Rewards feature coming soon</p>
         </div>
     </div>
 );

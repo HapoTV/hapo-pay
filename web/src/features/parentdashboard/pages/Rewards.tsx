@@ -160,57 +160,57 @@ const toggleRewardStatus = (id: string) => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm mb-8">
+    <div className="pb-20 md:pb-0 bg-slate-50 text-slate-900">
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm mb-5">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.28em] text-rose-500">Rewards Management</p>
-            <p className="mt-3 text-slate-600 max-w-2xl leading-relaxed">Create and manage rewards for your children</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-rose-500">Rewards Management</p>
+            <p className="mt-1 text-sm text-slate-600 max-w-2xl leading-snug">Create and manage rewards for your children</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-[2rem] border border-slate-200 p-6 shadow-sm mb-8">
-          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500 text-white shadow-sm">
-                <Gift size={20} />
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm mb-5">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-500 text-white shadow-sm">
+                <Gift size={16} />
               </div>
               <div>
-                <p className="text-sm font-medium uppercase tracking-[0.18em] text-slate-500">Active Rewards</p>
-                <h2 className="mt-1 text-3xl font-bold text-slate-950">{activeRewardCount}</h2>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Active Rewards</p>
+                <h2 className="mt-1 text-2xl font-semibold text-slate-950">{activeRewardCount}</h2>
               </div>
             </div>
-            <div className="text-sm text-slate-500">Manage your reward catalog and approve redemptions.</div>
+            <div className="text-xs text-slate-500">Manage your reward catalog and approve redemptions.</div>
           </div>
         </div>
 
-        <div className="bg-white rounded-[2rem] border border-slate-200 p-6 shadow-sm">
-          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between mb-6">
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
             <div>
-              <h2 className="text-lg font-semibold text-slate-950">Manage Rewards Store</h2>
+              <h2 className="text-base font-semibold text-slate-950">Manage Rewards Store</h2>
             </div>
             <button
               type="button"
               onClick={handleAddReward}
-              className="inline-flex items-center gap-2 rounded-xl bg-rose-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-rose-600"
+              className="inline-flex items-center gap-2 rounded-full bg-rose-500 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-rose-600"
             >
               + Add Reward
             </button>
           </div>
 
-          <div className="border-b border-slate-200 pb-4 mb-6">
-            <div className="flex flex-wrap gap-6 text-sm font-semibold">
+          <div className="border-b border-slate-200 pb-3 mb-4">
+            <div className="flex flex-wrap gap-4 text-sm font-semibold">
               <button
                 type="button"
                 onClick={() => setActiveTab('active')}
-                className={`pb-3 ${activeTab === 'active' ? 'text-rose-500 border-b-2 border-rose-500' : 'text-slate-500 hover:text-slate-900'}`}
+                className={`pb-2 ${activeTab === 'active' ? 'text-rose-500 border-b-2 border-rose-500' : 'text-slate-500 hover:text-slate-900'}`}
               >
                 Active Rewards
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('past')}
-                className={`pb-3 ${activeTab === 'past' ? 'text-rose-500 border-b-2 border-rose-500' : 'text-slate-500 hover:text-slate-900'}`}
+                className={`pb-2 ${activeTab === 'past' ? 'text-rose-500 border-b-2 border-rose-500' : 'text-slate-500 hover:text-slate-900'}`}
               >
                 Past Rewards (Redeemed)
               </button>

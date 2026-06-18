@@ -7,6 +7,7 @@ export { BottomNavigation } from './BottomNavigation';
 export { PaySection } from './PaySection';
 export { DashboardAirtime } from './DashboardAirtime';
 export { DashboardElectricity } from './DashboardElectricity';
+export { DashboardTV } from './DashboardTV';
 export { DashboardHome } from './DashboardHome';
 export { DashboardTopbar } from './DashboardTopbar';
 export { DashboardSearchNotice } from './DashboardSearchNotice';

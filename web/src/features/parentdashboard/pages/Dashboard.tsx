@@ -9,6 +9,7 @@ import {
   DashboardNotificationsPanel,
   DashboardSearchNotice,
   DashboardTopbar,
+  DashboardTV,
   EmergencyFundModal,
   WalletTopupModal,
   RecurringModal,
@@ -33,92 +34,19 @@ import {
   RefreshIcon,
   CogIcon,
 } from '@/components/icons';
+import {
+  mockParentData,
+  mockContacts,
+  mockAirtimeHistory,
+  mockElectricityHistory,
+  mockTvHistory,
+  mockQrPayments,
+  dataBundlesByNetwork,
+} from '../constants/mockData';
+import { TabType, BalanceSource } from '../types/dashboard.types';
 
 import { WalletPage } from './Wallet';
 import { RewardsPage } from './Rewards';
-// Mock data for development
-const mockParentData = {
-  id: 'parent-1',
-  name: 'Olwethu Madubela',
-  email: 'olwethu.madubela.hapo@gmail.com',
-  familyBalance: 500.0,
-  monthlySpending: 150.0,
-  savings: 1250.0,
-  currency: 'R',
-  children: [
-    {
-      id: '1',
-      name: 'Thabo Madubela',
-      email: 'thabo@hapo.com',
-      spendLimit: 500,
-      currentSpending: 250,
-      avatar: undefined,
-    },
-    {
-      id: '2',
-      name: 'Nomsa Madubela',
-      email: 'nomsa@hapo.com',
-      spendLimit: 450,
-      currentSpending: 180,
-      avatar: undefined,
-    },
-  ],
-};
-
-// Mock contacts for airtime/data
-const mockContacts = [
-  { id: '1', number: '+27 71 234 5678', name: 'Thabo', network: 'Vodacom' },
-  { id: '2', number: '+27 82 345 6789', name: 'Nomsa', network: 'MTN' },
-  { id: '3', number: '+27 73 456 7890', name: 'Brother', network: 'Cell C' },
-];
-
-// Mock history for airtime/data purchases
-const mockAirtimeHistory = [
-  { id: '1', number: '+27 71 234 5678', type: 'Airtime', amount: 50, date: '2025-01-15', status: 'Success' },
-  { id: '2', number: '+27 82 345 6789', type: 'Data', amount: 30, date: '2025-01-12', status: 'Success' },
-  { id: '3', number: '+27 73 456 7890', type: 'Airtime', amount: 100, date: '2025-01-10', status: 'Success' },
-  { id: '4', number: '+27 71 234 5678', type: 'Data', amount: 20, date: '2025-01-08', status: 'Success' },
-];
-
-const mockElectricityHistory = [
-  { id: '1', meterName: 'Home', meterNumber: '1234567890', amount: 500, date: '2025-01-18', status: 'Success' },
-  { id: '2', meterName: 'Home', meterNumber: '1234567890', amount: 300, date: '2025-01-14', status: 'Success' },
-  { id: '3', meterName: 'Home', meterNumber: '1234567890', amount: 250, date: '2025-01-10', status: 'Success' },
-  { id: '4', meterName: 'Home', meterNumber: '1234567890', amount: 400, date: '2025-01-05', status: 'Success' },
-];
-
-const mockQrPayments = [
-  { id: '1', merchant: 'GoodFood Cafe', amount: 120, date: 'Today', status: 'Paid' },
-  { id: '2', merchant: 'Market Express', amount: 85, date: 'Yesterday', status: 'Paid' },
-  { id: '3', merchant: 'Bookstore', amount: 210, date: '2 days ago', status: 'Paid' },
-];
-
-const dataBundlesByNetwork: Record<string, { id: string; label: string }[]> = {
-  Vodacom: [
-    { id: 'vodacom-100mb', label: '100MB' },
-    { id: 'vodacom-250mb', label: '250MB' },
-    { id: 'vodacom-500mb', label: '500MB' },
-    { id: 'vodacom-1gb', label: '1GB' },
-  ],
-  MTN: [
-    { id: 'mtn-150mb', label: '150MB' },
-    { id: 'mtn-500mb', label: '500MB' },
-    { id: 'mtn-1gb', label: '1GB' },
-    { id: 'mtn-2gb', label: '2GB' },
-  ],
-  'Cell C': [
-    { id: 'cellc-100mb', label: '100MB' },
-    { id: 'cellc-300mb', label: '300MB' },
-    { id: 'cellc-1gb', label: '1GB' },
-  ],
-  'Telkom Mobile': [
-    { id: 'telkom-100mb', label: '100MB' },
-    { id: 'telkom-400mb', label: '400MB' },
-    { id: 'telkom-1-5gb', label: '1.5GB' },
-  ],
-};
-
-type TabType = 'home' | 'payments' | 'wallet' | 'pay' | 'rewards' | 'settings';
 
 export const ParentDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -137,7 +65,7 @@ export const ParentDashboard: React.FC = () => {
   const [showRecurringModal, setShowRecurringModal] = useState(false);
   const [showRecurringFormModal, setShowRecurringFormModal] = useState(false);
   const [showManageLimitsModal, setShowManageLimitsModal] = useState(false);
-  const [transferSource, setTransferSource] = useState<'family' | 'savings'>('family');
+  const [transferSource, setTransferSource] = useState<BalanceSource>('family');
   const [transferAmount, setTransferAmount] = useState('');
   const [transferMessage, setTransferMessage] = useState('');
   // Add Child modal state
@@ -178,6 +106,10 @@ export const ParentDashboard: React.FC = () => {
   const [selectedMeterForBuy, setSelectedMeterForBuy] = useState<string | null>(null);
   const [electricityAmount, setElectricityAmount] = useState('');
   const [showElectricityConfirmation, setShowElectricityConfirmation] = useState(false);
+
+  // TV page
+  const [showTvPage, setShowTvPage] = useState(false);
+  const [tvTab, setTvTab] = useState<'pay' | 'history'>('pay');
 
   // Airtime/Electricity Confirmation states
   const [showAirtimeConfirmation, setShowAirtimeConfirmation] = useState(false);
@@ -418,6 +350,12 @@ export const ParentDashboard: React.FC = () => {
     setNewMeterNumber('');
   };
 
+  // TV handlers
+  const closeTvModal = () => {
+    setShowTvPage(false);
+    setTvTab('pay');
+  };
+
   // Quick Actions
   const quickActionsAll = [
     {
@@ -476,7 +414,7 @@ export const ParentDashboard: React.FC = () => {
       id: '3',
       title: 'TV',
       icon: <TvIcon className="w-6 h-6 text-rose-500" />,
-      onClick: () => alert('TV - Coming Soon'),
+      onClick: () => setShowTvPage(true),
     },
   ];
 
@@ -799,6 +737,15 @@ export const ParentDashboard: React.FC = () => {
           handleConfirmElectricityPurchase={handleConfirmElectricityPurchase}
           handleElectricityPurchaseConfirmed={handleElectricityPurchaseConfirmed}
           mockElectricityHistory={mockElectricityHistory}
+        />
+      ) : showTvPage ? (
+        <DashboardTV
+          tvTab={tvTab}
+          setTvTab={setTvTab}
+          closeTvModal={closeTvModal}
+          familyBalance={parentData.familyBalance}
+          savings={parentData.savings}
+          mockTvHistory={mockTvHistory}
         />
       ) : (
         <div className="min-h-screen bg-slate-50 text-slate-900">
