@@ -1,0 +1,8 @@
+{%extends "emails/base_email.html" %}
+{% block content %}
+    <p> HI {{user.profile.full_name}},</p>
+    <div class="error-box">
+        <p> Your HapoPay account has been temporarily suspended</p>
+    </div>
+    <p> Please contact support for more information</p>
+{% endblock %}
