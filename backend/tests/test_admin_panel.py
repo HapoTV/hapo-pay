@@ -16,7 +16,7 @@ class BaseAdminTest(TestCase):
     def setUp(self):
         self.client = APIClient()
 
-        # Admin user
+     
         self.admin = User.objects.create_superuser(
             email='admin@hapopay.com',
             password='adminpass123',
@@ -24,17 +24,13 @@ class BaseAdminTest(TestCase):
         self.admin.role = 'admin'
         self.admin.save()
 
-        # Regular user
+  
         self.user = User.objects.create_user(
             email='user@hapopay.com',
             password='userpass123',
         )
 
-        # Authenticate as admin
         self.client.force_authenticate(user=self.admin)
-
-
-# ─── User Management ──────────────────────────────────────────────────────────
 
 class UserManagementTest(BaseAdminTest):
 
@@ -114,8 +110,6 @@ class UserManagementTest(BaseAdminTest):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
 
-# ─── Merchant Verification ────────────────────────────────────────────────────
-
 class MerchantVerificationTest(BaseAdminTest):
 
     def setUp(self):
@@ -171,9 +165,6 @@ class MerchantVerificationTest(BaseAdminTest):
         self.merchant.save()
         response = self.client.get('/api/v1/admin/merchants/pending/')
         self.assertEqual(len(response.data['data']), 0)
-
-
-# ─── Fraud Alert Endpoints ────────────────────────────────────────────────────
 
 class FraudAlertEndpointTest(BaseAdminTest):
 
@@ -246,8 +237,6 @@ class FraudAlertEndpointTest(BaseAdminTest):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
-# ─── Fraud Monitoring Manual Check ───────────────────────────────────────────
-
 class FraudMonitoringTest(BaseAdminTest):
 
     def setUp(self):
@@ -272,7 +261,7 @@ class FraudMonitoringTest(BaseAdminTest):
 
     @patch('apps.notifications.tasks.send_notification_task.delay')
     def test_manual_fraud_check_flags_suspicious_transaction(self, mock_notify):
-        # Create a large transaction that should trigger the engine
+        
         large_txn = Transaction.objects.create(
             user=self.user,
             amount=Decimal('60000.00'),
