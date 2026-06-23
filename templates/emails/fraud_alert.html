@@ -1,0 +1,17 @@
+{% extends "emails/base_email.html"%}
+{%block content%}
+    <p> Hi {{user.profile.full_name}},</p>
+    <div class="danger-box">
+        <p><strong> Security Alert:</strong> A transaction on your account has been flagged for review.</p>
+    </div>
+    <div class ="detail-row">
+        <span class="detail-label"> Amount</span>
+        <span class ="detail-value"> ZAR {{amount}}</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label"> Reason</span>
+        <span class="detail-value">{{reason}}</span>
+    </div>
+    <p> If this was you, no action is needed - Our Team will review and clear it shortly</p>
+    <p> If you did not initiate this transaction, please contact support immediately.</p>
+{% endblock %}
