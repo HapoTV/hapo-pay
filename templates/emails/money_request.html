@@ -1,0 +1,14 @@
+{% extends "emails/base_email.html" %}
+{% block content %}
+    <p> Hi {{user.profile.full_name}},</p>
+    <p> <strong> {{child_name}}</strong> has sent you a money request</p>
+    <div class="amount"> ZAR {{amount}}</div>
+    <div class="detail-row">
+        <span class="detail-label">Reason</span>
+        <span class="detail-value">{{reason}}</span>
+    </div>
+    <div class="alert-box">
+        <p> Log into HapoPay to approve or decline this request</p>
+    </div>
+{% endblock %}
+    
