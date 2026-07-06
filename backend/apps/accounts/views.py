@@ -364,3 +364,14 @@ class RoleSwitchView(APIView):
                 'role': role
             }
         })
+
+class TokenRefresView(BaseTokenRefreshView):
+    def post(self, request, *args,**kwargs):
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == 200:
+            return response({
+                'status': 'success',
+                'message': 'Token refreshed successfully',
+                'data': {'tokens':response.data}
+            })
+        return response
