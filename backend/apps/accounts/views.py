@@ -6,7 +6,11 @@ from rest_framework.views import APIView
 from django.contrib.auth import authenticate
 from django.core.mail import send_mail
 from django.conf import settings
+from django.utils import timezone
+from django.db import transaction
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenRefreshView as BaseTokenRefreshView
+
 from .models import User, Profile, ParentProfile, StudentProfile
 from .serializers import (
     UserSerializer, ProfileSerializer, RegisterSerializer, LoginSerializer,
@@ -24,57 +28,42 @@ class RegisterView(generics.CreateAPIView):
     permission_classes = [AllowAny]
     serializer_class = RegisterSerializer
 
-    def create(self, request, *args, **kwargs):
+def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         data = serializer.validated_data
 
-        # Create user in Django
-        user = User.objects.create_user(
-            email=data['email'],
-            password=data['password'],
-            role=data['role'],
-            phone_number=data.get('phone_number', '')
-        )
-
-        # Create profile
-        profile = Profile.objects.create(
-            user=user,
-            full_name=data['full_name']
-        )
-
-        # Create role-specific profile
-        if data['role'] == 'parent':
-            ParentProfile.objects.create(user=user)
-        elif data['role'] == 'student':
-            # For student, parent_email is required but not in this serializer
-            # Will be completed in complete_profile endpoint
-            StudentProfile.objects.create(
-                user=user,
-                parent=None  # To be set later
+        with transaction.atomic():
+            user = User.objects.create_user(
+                email=data['email'],
+                password=data['password'],
+                role=data['role'],
+                phone_number=data.get('phone_number', '')
             )
 
-        # Create user in Supabase Auth
-        try:
-            supabase_user = supabase.auth.sign_up({
-                "email": data['email'],
-                "password": data['password'],
-                "options": {
-                    "data": {
-                        "full_name": data['full_name'],
-                        "role": data['role']
-                    }
-                }
-            })
-            user.supabase_id = supabase_user.user.id
-            user.save()
-        except Exception as e:
-            # Log error but don't fail registration
-            print(f"Supabase registration error: {e}")
+            profile = Profile.objects.create(
+                user=user,
+                full_name=data['full_name']
+            )
 
-        # Generate JWT tokens
-        refresh = RefreshToken.for_user(user)
+            if data['role'] == 'parent':
+                ParentProfile.objects.create(user=user)
+            elif data['role'] == 'student':
+                StudentProfile.objects.create(user=user, parent=None)
+
+            # Best-effort Supabase mirror — must not roll back the Django user
+            try:
+                supabase_user = supabase.auth.sign_up({
+                    "email": data['email'],
+                    "password": data['password'],
+                    "options": {"data": {"full_name": data['full_name'], "role": data['role']}}
+                })
+                user.supabase_id = supabase_user.user.id
+                user.save()
+            except Exception as e:
+                print(f"Supabase registration error: {e}")
+
+            refresh = RefreshToken.for_user(user)
 
         return Response({
             'status': 'success',
