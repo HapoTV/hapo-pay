@@ -35,6 +35,9 @@ dependencies:
   qr_flutter: ^4.1.0
   mobile_scanner: ^5.2.3
 
+  # Biometrics
+  local_auth: ^2.3.0
+
   # Utils
   intl: ^0.19.0
 
