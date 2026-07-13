@@ -29,17 +29,22 @@ class Wallet(models.Model):
         return f"{self.user.email} - {self.currency} {self.balance}"
 
     def add_balance(self, amount):
-        """Add amount to wallet balance"""
+        """Credit Wallet. Use select_for_update() at the call site."""
+        if not self.is_active:
+            raise ValueError('Cannot credit an inactive Wallet.')
         self.balance += amount
-        self.save()
+        self.save(update_fields=['balance', 'updated_at'])
 
     def deduct_balance(self, amount):
-        """Deduct amount from wallet balance if sufficient"""
-        if self.balance >= amount:
-            self.balance -= amount
-            self.save()
-            return True
-        return False
+        """Debit wallet.Return True on Sucess, False if insufficient funds"""
+        if not self.is_active:
+            raise ValueError('Cannot debit an inactive Wallet.')
+        if self.balance < amount:
+            return False
+        self.balance -= amount
+        self.save(update_fields=['balance', 'updated_at'])
+        return True
+        
 
 
 class Transaction(models.Model):
@@ -67,10 +72,12 @@ class Transaction(models.Model):
 
     STATUS_CHOICES = [
         ('pending', 'Pending'),
+        ('processing', 'Processing'),
         ('completed', 'Completed'),
         ('failed', 'Failed'),
         ('cancelled', 'Cancelled'),
         ('refunded', 'Refunded'),
+        ('frozen', 'Frozen'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -86,6 +93,8 @@ class Transaction(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    is_flagged = models.BooleanField(default=False, db_index=True)
+    fraud_reasons = models.JSONField(default=list, blank=True)
 
     class Meta:
         db_table = 'transactions'

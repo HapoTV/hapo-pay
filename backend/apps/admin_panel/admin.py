@@ -1,6 +1,7 @@
 # apps/admin_panel/admin.py
 from django.contrib import admin
-from .models import SystemConfig, AuditLog, FraudAlert
+from .models import SystemConfig, AuditLog
+from apps.payments.models import FraudAlert
 
 @admin.register(SystemConfig)
 class SystemConfigAdmin(admin.ModelAdmin):

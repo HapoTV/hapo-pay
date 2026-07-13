@@ -2,11 +2,16 @@
 from django.db import transaction
 from django.utils import timezone
 from decimal import Decimal
+
+from apps.payments.fraud_detection import check_transaction, freeze_and_alert
 from .models import Wallet, Transaction, SpendingLimit
 from apps.notifications.services import NotificationService
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+
 
 
 class TransferService:
@@ -22,23 +27,35 @@ class TransferService:
 
             if sender_wallet.balance < amount:
                 raise ValueError("Insufficient balance")
+            
+            sender_txn = Transaction(
+                user=sender,
+                amount=amount,
+                type='transfer',
+                category=category,
+                status='pending',
+                description=f"Transfer to {recipient.email}: {description}",
+                reference_id=str(recipient.id),
+            )
+
+            is_suspicious, reasons, severity, alert_type = check_transaction(sender_txn,sender)
+            if is_suspicious:
+                sender_txn.save()
+                freeze_and_alert(sender_txn, reasons, severity,alert_type)
+                logger.warning(
+                    f"Transfer frozen for fraud review | sender={sender.id} | "
+                    f"amount={amount} | reasons={reasons}"
+                )
+                return sender_txn
 
             # Perform transfer
             sender_wallet.deduct_balance(amount)
             recipient_wallet.add_balance(amount)
 
-            # Create transaction records
-            Transaction.objects.create(
-                user=sender,
-                amount=amount,
-                type='transfer',
-                category=category,
-                status='completed',
-                description=f"Transfer to {recipient.email}: {description}",
-                reference_id=str(recipient.id)
-            )
+            sender_txn.status = 'completed'
+            sender_txn.save()
 
-            transaction_record = Transaction.objects.create(
+            recipient_txn = Transaction.objects.create(
                 user=recipient,
                 amount=amount,
                 type='transfer',
@@ -48,6 +65,27 @@ class TransferService:
                 reference_id=str(sender.id)
             )
 
+            # # Create transaction records
+            # Transaction.objects.create(
+            #     user=sender,
+            #     amount=amount,
+            #     type='transfer',
+            #     category=category,
+            #     status='completed',
+            #     description=f"Transfer to {recipient.email}: {description}",
+            #     reference_id=str(recipient.id)
+            # )
+
+            # transaction_record = Transaction.objects.create(
+            #     user=recipient,
+            #     amount=amount,
+            #     type='transfer',
+            #     category=category,
+            #     status='completed',
+            #     description=f"Transfer from {sender.email}: {description}",
+            #     reference_id=str(sender.id)
+            # )
+
             # Send notification
             NotificationService.send_notification(
                 user=recipient,
@@ -56,7 +94,7 @@ class TransferService:
                 notification_type='transfer'
             )
 
-            return transaction_record
+            return recipient_txn
 
         except Exception as e:
             logger.error(f"Transfer failed: {str(e)}")

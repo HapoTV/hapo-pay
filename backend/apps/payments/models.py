@@ -4,7 +4,34 @@ from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 import uuid
 
+FRAUD_SEVERITY_CHOICES = [
+    ('low', 'Low'),
+    ('medium', 'Medium'),
+    ('high','High'),
+    ('critical', 'Critical'),
+]
 
+FRAUD_STATUS_CHOICES = [
+    ('large_single_transaction', 'Large Single Transaction'),
+    ('velocity_hourly', 'Hourly Velocity'),
+    ('velocity_daily', 'Daily Velocity'),
+    ('hourly_volume_exceeded', 'Hourly Volume Exceeded'),
+    ('unusual_hours', 'Unusual Hours'),
+    ('new_recipient_large', ' Large To New Recipient'),
+    ('multiple_rules', 'Multiple Rules Triggered'),
+    ('rapid_succession', 'Rapid Succession'),
+]
+
+FRAUD_ALERT_TYPE_CHOICES = [
+    ('large_single_transaction', 'Large Single Transaction'),
+    ('velocity_hourly', 'Hourly Velocity'),
+    ('velocity_daily', 'Daily Velocity'),
+    ('hourly_volume_exceeded', 'Hourly Volume Exceeded'),
+    ('unusual_hours', 'Unusual Hours'),
+    ('new_recipient_large', 'Large To New Recipient'),
+    ('multiple_rules', 'Multiple Rules Triggered'),
+    ('rapid_succession', 'Rapid Succession'),
+]
 class Merchant(models.Model):
     CATEGORY_CHOICES = [
         ('retail', 'Retail'),
@@ -102,7 +129,7 @@ class AirtimePurchase(models.Model):
     phone_number = models.CharField(max_length=15)
     amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(1)])
     provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='pending')
     transaction_id = models.CharField(max_length=100, unique=True, null=True, blank=True)
     metadata = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -142,7 +169,7 @@ class TransportTicket(models.Model):
     amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0.01)])
     seat_number = models.CharField(max_length=20, blank=True, null=True)
     qr_code = models.TextField(blank=True, null=True)  # Base64 encoded ticket QR
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='pending')
     reference = models.CharField(max_length=100, unique=True, null=True, blank=True)
     metadata = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -154,3 +181,31 @@ class TransportTicket(models.Model):
 
     def __str__(self):
         return f"{self.ticket_type} - {self.route} ({self.amount})"
+
+
+
+class FraudAlert(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    transaction = models.ForeignKey('wallets.Transaction', on_delete=models.CASCADE, related_name='fraud_alerts')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='fraud_alerts')
+    alert_type = models.CharField(max_length=50, choices=FRAUD_ALERT_TYPE_CHOICES, default='multiple_rules')
+    reasons = models.JSONField(default=list)
+    severity = models.CharField(max_length=30, choices=FRAUD_SEVERITY_CHOICES,default='low')
+    status= models.CharField(max_length=30,choices=FRAUD_STATUS_CHOICES,default='pending')
+    reviewed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='reviewed_fraud_alerts')
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    review_notes = models.TextField(blank=True, default='')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes =[
+            models.Index(fields=['severity']),
+            models.Index(fields=['status']),
+            models.Index(fields=['user']),
+            models.Index(fields=['created_at']),
+        ]
+    def __str__(self):
+        return f"FraudAlert [{self.severity}] - {self.user.email} - {self.status}"
