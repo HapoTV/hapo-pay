@@ -2,7 +2,11 @@
 from rest_framework import serializers
 from django.utils import timezone
 from .models import Wallet, Transaction, SpendingLimit, MoneyRequest
+<<<<<<< HEAD
 from apps.accounts.models import User, Profile, StudentProfile
+=======
+from apps.accounts.models import User
+>>>>>>> 709515cb3e489a1bb965b0fc271ee6100075da4a
 
 
 class WalletSerializer(serializers.ModelSerializer):
@@ -70,6 +74,7 @@ class CreateMoneyRequestSerializer(serializers.Serializer):
 class ApproveMoneyRequestSerializer(serializers.Serializer):
     request_id = serializers.UUIDField()
     action = serializers.ChoiceField(choices=['approve', 'decline'])
+<<<<<<< HEAD
     parent_notes = serializers.CharField(max_length=500, required=False)
 
 
@@ -117,3 +122,6 @@ class ChildSummarySerializer(serializers.ModelSerializer):
 
 class FreezeAccountSerializer(serializers.Serializer):
     freeze_reason = serializers.CharField(max_length=500)
+=======
+    parent_notes = serializers.CharField(max_length=500, required=False)
+>>>>>>> 709515cb3e489a1bb965b0fc271ee6100075da4a

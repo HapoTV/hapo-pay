@@ -21,6 +21,7 @@ coverage.xml
 .pytest_cache/
 htmlcov/
 .mypy_cache/
+venv/
 
 # Django
 *.sqlite3
@@ -65,6 +66,7 @@ mobile/coverage/
 
 # ─── Environment & Secrets ─────────────────────────────────────────────────────
 .env
+venv/
 .env.*
 !.env.example
 *.pem

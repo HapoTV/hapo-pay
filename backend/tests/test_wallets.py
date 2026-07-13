@@ -1,16 +1,24 @@
 # tests/test_wallets.py
+<<<<<<< HEAD
 from decimal import Decimal
+=======
+>>>>>>> 709515cb3e489a1bb965b0fc271ee6100075da4a
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APIClient
 from django.contrib.auth import get_user_model
+<<<<<<< HEAD
 from apps.wallets.models import Wallet, Transaction, SpendingLimit, MoneyRequest
 from apps.wallets.services import WalletService, CategoryService, SpendingLimitEnforcer
 from apps.accounts.models import Profile, StudentProfile, ParentProfile
+=======
+from apps.wallets.models import Wallet, Transaction
+>>>>>>> 709515cb3e489a1bb965b0fc271ee6100075da4a
 
 User = get_user_model()
 
 
+<<<<<<< HEAD
 def make_user(email, role='parent', password='TestPass123!'):
     """Helper to create a user with profile."""
     user = User.objects.create_user(email=email, password=password, role=role)
@@ -28,10 +36,14 @@ def make_student(email, parent, balance=Decimal('100.00')):
 
 class TestSetupMixin:
     """Shared setUp for all test cases."""
+=======
+class WalletsTestCase(TestCase):
+>>>>>>> 709515cb3e489a1bb965b0fc271ee6100075da4a
 
     def setUp(self):
         self.client = APIClient()
 
+<<<<<<< HEAD
         self.parent = make_user('parent@test.com', role='parent')
         ParentProfile.objects.create(user=self.parent)
         self.parent_wallet = Wallet.objects.create(
@@ -544,3 +556,67 @@ class TestWalletAndTransactionViews(TestSetupMixin, TestCase):
         self.assertIn('transport', values)
         self.assertIn('education', values)
         self.assertEqual(len(values), 9)
+=======
+        # Create parent user
+        self.parent = User.objects.create_user(
+            email='parent@test.com',
+            password='TestPass123!',
+            role='parent'
+        )
+        self.parent_wallet = Wallet.objects.create(user=self.parent, balance=1000)
+
+        # Create student user
+        self.student = User.objects.create_user(
+            email='student@test.com',
+            password='TestPass123!',
+            role='student'
+        )
+        self.student_wallet = Wallet.objects.create(user=self.student, balance=100)
+
+        # Link student to parent
+        from apps.accounts.models import StudentProfile
+        StudentProfile.objects.create(user=self.student, parent=self.parent)
+
+        self.transfer_url = reverse('transfer-funds')
+
+    def test_transfer_funds(self):
+        """Test fund transfer from parent to child"""
+        self.client.force_authenticate(user=self.parent)
+
+        response = self.client.post(self.transfer_url, {
+            'recipient_id': str(self.student.id),
+            'amount': 50.00,
+            'description': 'Weekly allowance'
+        }, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        self.parent_wallet.refresh_from_db()
+        self.student_wallet.refresh_from_db()
+
+        self.assertEqual(self.parent_wallet.balance, 950.00)
+        self.assertEqual(self.student_wallet.balance, 150.00)
+
+    def test_insufficient_balance(self):
+        """Test transfer with insufficient balance"""
+        self.client.force_authenticate(user=self.parent)
+
+        response = self.client.post(self.transfer_url, {
+            'recipient_id': str(self.student.id),
+            'amount': 2000.00,
+            'description': 'Too much'
+        }, format='json')
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('Insufficient', response.data['message'])
+
+    def test_unauthorized_transfer(self):
+        """Test unauthorized transfer attempt"""
+        self.client.force_authenticate(user=self.student)
+
+        response = self.client.post(self.transfer_url, {
+            'recipient_id': str(self.parent.id),
+            'amount': 50.00
+        }, format='json')
+
+        self.assertEqual(response.status_code, 403)
+>>>>>>> 709515cb3e489a1bb965b0fc271ee6100075da4a
