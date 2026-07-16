@@ -2,14 +2,25 @@ name: Backend CI
 
 on:
   push:
+    branches:
+      - backend
+      - main
     paths:
       - "backend/**"
   pull_request:
+    branches:
+      - backend
+      - main
     paths:
       - "backend/**"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  test:
+  lint:
+    name: Lint & Security
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -24,12 +35,86 @@ jobs:
           python-version: "3.11"
           cache: "pip"
 
+      - name: Install lint tools
+        run: pip install flake8 isort bandit
+
+      - name: Lint with flake8
+        run: |
+          flake8 . \
+            --max-line-length=88 \
+            --extend-ignore=E203,W503 \
+            --exclude=migrations,__pycache__,.git
+
+      - name: Check import order (isort)
+        run: isort --check-only --diff . --skip migrations
+
+      - name: Security scan (bandit)
+        run: bandit -r apps/ core/ middleware/ -ll
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: hapopay_test
+          POSTGRES_USER: hapopay
+          POSTGRES_PASSWORD: hapopay_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DEBUG: "True"
+      SECRET_KEY: "ci-secret-key-not-for-production"
+      DJANGO_SETTINGS_MODULE: hapopay.settings
+      DATABASE_NAME: hapopay_test
+      DATABASE_USER: hapopay
+      DATABASE_PASSWORD: hapopay_password
+      DATABASE_HOST: localhost
+      DATABASE_PORT: "5432"
+      ALLOWED_HOSTS: "localhost,127.0.0.1"
+      SUPABASE_URL: "https://placeholder.supabase.co"
+      SUPABASE_KEY: placeholder-anon-key
+      SUPABASE_SERVICE_KEY: placeholder-service-key
+      SUPABASE_JWT_SECRET: placeholder-jwt-secret
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run tests
-        env:
-          DEBUG: "True"
-          SECRET_KEY: "ci-secret-key"
-          DATABASE_URL: "sqlite:///test.sqlite3"
-        run: pytest
+      - name: Create empty .env file
+        run: touch .env
+
+      - name: Run migrations
+        run: python manage.py migrate --noinput
+
+      - name: Run tests with coverage
+        run: |
+          coverage run -m pytest tests/ -v --tb=short
+          coverage report --fail-under=60
+          coverage xml
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: backend/coverage.xml
