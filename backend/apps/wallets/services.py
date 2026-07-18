@@ -1,4 +1,3 @@
-# apps/wallets/services.py
 from django.db import transaction
 from django.utils import timezone
 from decimal import Decimal
@@ -6,20 +5,42 @@ from decimal import Decimal
 from apps.payments.fraud_detection import check_transaction, freeze_and_alert
 from .models import Wallet, Transaction, SpendingLimit
 from apps.notifications.services import NotificationService
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 import logging
 
 logger = logging.getLogger(__name__)
-
-
-
 
 
 class TransferService:
     """Handle all fund transfer operations"""
 
     @staticmethod
+    def broadcast_balance_update(wallet):
+        """Broadcast updated wallet balance via WebSocket."""
+        try:
+            channel_layer = get_channel_layer()
+
+            async_to_sync(channel_layer.group_send)(
+                f"wallet_{wallet.user.id}",
+                {
+                    "type": "balance_update",
+                    "balance": str(wallet.balance),
+                    "currency": wallet.currency,
+                    "timestamp": timezone.now().isoformat(),
+                },
+            )
+
+            logger.info(
+                f"Broadcasted balance update for user {wallet.user.id}"
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to broadcast balance update: {str(e)}")
+
+    @staticmethod
     @transaction.atomic
-    def transfer_funds(sender, recipient, amount, description="", category='other'):
+    def transfer_funds(sender, recipient, amount, description="", category="other"):
         """Transfer funds between two users"""
         try:
             sender_wallet = Wallet.objects.select_for_update().get(user=sender)
@@ -27,21 +48,22 @@ class TransferService:
 
             if sender_wallet.balance < amount:
                 raise ValueError("Insufficient balance")
-            
+
             sender_txn = Transaction(
                 user=sender,
                 amount=amount,
-                type='transfer',
+                type="transfer",
                 category=category,
-                status='pending',
+                status="pending",
                 description=f"Transfer to {recipient.email}: {description}",
                 reference_id=str(recipient.id),
             )
 
-            is_suspicious, reasons, severity, alert_type = check_transaction(sender_txn,sender)
+            is_suspicious, reasons, severity, alert_type = check_transaction(sender_txn, sender)
+
             if is_suspicious:
                 sender_txn.save()
-                freeze_and_alert(sender_txn, reasons, severity,alert_type)
+                freeze_and_alert(sender_txn, reasons, severity, alert_type)
                 logger.warning(
                     f"Transfer frozen for fraud review | sender={sender.id} | "
                     f"amount={amount} | reasons={reasons}"
@@ -52,46 +74,28 @@ class TransferService:
             sender_wallet.deduct_balance(amount)
             recipient_wallet.add_balance(amount)
 
-            sender_txn.status = 'completed'
+            # Broadcast live balance updates
+            TransferService.broadcast_balance_update(sender_wallet)
+            TransferService.broadcast_balance_update(recipient_wallet)
+
+            sender_txn.status = "completed"
             sender_txn.save()
 
             recipient_txn = Transaction.objects.create(
                 user=recipient,
                 amount=amount,
-                type='transfer',
+                type="transfer",
                 category=category,
-                status='completed',
+                status="completed",
                 description=f"Transfer from {sender.email}: {description}",
-                reference_id=str(sender.id)
+                reference_id=str(sender.id),
             )
 
-            # # Create transaction records
-            # Transaction.objects.create(
-            #     user=sender,
-            #     amount=amount,
-            #     type='transfer',
-            #     category=category,
-            #     status='completed',
-            #     description=f"Transfer to {recipient.email}: {description}",
-            #     reference_id=str(recipient.id)
-            # )
-
-            # transaction_record = Transaction.objects.create(
-            #     user=recipient,
-            #     amount=amount,
-            #     type='transfer',
-            #     category=category,
-            #     status='completed',
-            #     description=f"Transfer from {sender.email}: {description}",
-            #     reference_id=str(sender.id)
-            # )
-
-            # Send notification
             NotificationService.send_notification(
                 user=recipient,
                 title="Money Received!",
                 body=f"You've received {amount} from {sender.profile.full_name}",
-                notification_type='transfer'
+                notification_type="transfer",
             )
 
             return recipient_txn
@@ -108,17 +112,23 @@ class LimitCheckerService:
     def check_spending_limit(student, amount, category):
         """Check if transaction is within spending limits"""
         try:
-            limit = SpendingLimit.objects.get(child=student, category=category, is_enabled=True)
+            limit = SpendingLimit.objects.get(
+                child=student,
+                category=category,
+                is_enabled=True,
+            )
             return limit.check_limit(amount)
         except SpendingLimit.DoesNotExist:
-            # No limit set for this category
             return True
 
     @staticmethod
     def update_spent_amounts(student, amount, category):
         """Update spent amounts after a transaction"""
         try:
-            limit = SpendingLimit.objects.get(child=student, category=category)
+            limit = SpendingLimit.objects.get(
+                child=student,
+                category=category,
+            )
             limit.daily_spent += amount
             limit.weekly_spent += amount
             limit.monthly_spent += amount
@@ -138,7 +148,7 @@ class NotificationService:
                 user=user,
                 title="Low Balance Alert",
                 body=f"Your balance is {current_balance}. Consider requesting funds.",
-                notification_type='alert'
+                notification_type="alert",
             )
 
     @staticmethod
@@ -148,6 +158,9 @@ class NotificationService:
             user=parent,
             title="Spending Alert",
             body=f"{child.profile.full_name} spent {amount} on {category}",
-            notification_type='spending_alert',
-            metadata={'child_id': str(child.id), 'amount': str(amount)}
+            notification_type="spending_alert",
+            metadata={
+                "child_id": str(child.id),
+                "amount": str(amount),
+            },
         )
