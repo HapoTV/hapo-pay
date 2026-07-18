@@ -32,6 +32,16 @@ class IsAdmin(permissions.BasePermission):
         return request.user.is_authenticated and request.user.role == 'admin'
 
 
+class IsMerchant(permissions.BasePermission):
+    """Allow access only to merchant users"""
+
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role == 'merchant'
+
+    def has_object_permission(self, request, view, obj):
+        return request.user.is_authenticated and request.user.role == 'merchant'
+
+
 class IsOwnAccount(permissions.BasePermission):
     """Allow access only to own account"""
 

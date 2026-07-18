@@ -1,6 +1,6 @@
 # apps/payments/serializers.py
 from rest_framework import serializers
-from .models import Merchant, QRCode, NFCToken, AirtimePurchase, TransportTicket
+from .models import Merchant, QRCode, NFCToken, AirtimePurchase, TransportTicket, Settlement
 
 
 class MerchantSerializer(serializers.ModelSerializer):
@@ -8,6 +8,17 @@ class MerchantSerializer(serializers.ModelSerializer):
         model = Merchant
         fields = ('id', 'name', 'category', 'address', 'logo_url', 'verified', 'created_at')
         read_only_fields = ('id', 'verified', 'created_at')
+
+
+class SettlementSerializer(serializers.ModelSerializer):
+    merchant_name = serializers.CharField(source='merchant.name', read_only=True)
+
+    class Meta:
+        model = Settlement
+        fields = ('id', 'merchant', 'merchant_name', 'period_start', 'period_end',
+                  'transaction_count', 'gross_amount', 'fee_amount', 'net_amount',
+                  'status', 'paid_at', 'created_at')
+        read_only_fields = fields
 
 
 class QRCodeSerializer(serializers.ModelSerializer):

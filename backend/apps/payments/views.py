@@ -11,18 +11,20 @@ import qrcode
 import base64
 from io import BytesIO
 import uuid
-from .models import Merchant, QRCode, NFCToken, AirtimePurchase, TransportTicket
+from .models import Merchant, QRCode, NFCToken, AirtimePurchase, TransportTicket, Settlement
 from .serializers import (
     MerchantSerializer, QRCodeSerializer, NFCTokenSerializer,
     AirtimePurchaseSerializer, TransportTicketSerializer,
-    QRPaymentSerializer, NFCPaymentSerializer, AirtimeBuySerializer, TransportBuySerializer
+    QRPaymentSerializer, NFCPaymentSerializer, AirtimeBuySerializer, TransportBuySerializer,
+    SettlementSerializer
 )
-from core.permissions import IsParent, IsStudent, IsAdmin
+from core.permissions import IsParent, IsStudent, IsAdmin, IsMerchant
 from apps.wallets.models import Wallet, Transaction
 from apps.wallets.services import LimitCheckerService, TransferService
 from apps.notifications.services import NotificationService
 from apps.gamification.services import PointCalculatorService
-from .services import PaymentProcessorService, AirtimeProviderService, TransportAPIService
+from .services import PaymentProcessorService, AirtimeProviderService, TransportAPIService, SettlementService
+from django.db.models import Sum, Count
 import logging
 
 logger = logging.getLogger(__name__)
@@ -400,7 +402,7 @@ class GenerateQRCodeView(APIView):
             merchant = Merchant.objects.get(id=merchant_id)
 
             # Check if user is merchant owner or admin
-            if request.user.role != 'admin' and request.user.id != merchant.created_by_id:
+            if request.user.role != 'admin' and request.user.id != merchant.owner_id:
                 return Response({
                     'status': 'error',
                     'message': 'Permission denied'
@@ -474,3 +476,107 @@ class RegisterNFCTokenView(APIView):
                 'expires_at': nfc_token.expires_at
             }
         })
+
+
+def _get_own_merchant_or_404(user):
+    """Look up the Merchant business owned by the requesting user."""
+    try:
+        return user.merchant_business
+    except Merchant.DoesNotExist:
+        return None
+
+
+class MerchantDashboardView(APIView):
+    """Overview stats for the logged-in merchant's own business"""
+    permission_classes = [IsAuthenticated, IsMerchant]
+
+    def get(self, request):
+        merchant = _get_own_merchant_or_404(request.user)
+        if merchant is None:
+            return Response({
+                'status': 'error',
+                'message': 'No merchant business is linked to this account'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        completed_txns = Transaction.objects.filter(
+            merchant_id=merchant.id, type='payment', status='completed'
+        )
+
+        unsettled_total = completed_txns.filter(settlements__isnull=True).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+
+        lifetime = completed_txns.aggregate(total=Sum('amount'), count=Count('id'))
+
+        recent = completed_txns.order_by('-created_at')[:10]
+
+        return Response({
+            'status': 'success',
+            'data': {
+                'merchant': MerchantSerializer(merchant).data,
+                'lifetime_revenue': lifetime['total'] or 0,
+                'lifetime_transaction_count': lifetime['count'] or 0,
+                'pending_settlement_amount': unsettled_total,
+                'recent_transactions': [
+                    {
+                        'id': str(t.id),
+                        'amount': t.amount,
+                        'category': t.category,
+                        'created_at': t.created_at,
+                        'description': t.description,
+                    }
+                    for t in recent
+                ],
+            }
+        })
+
+
+class MerchantAnalyticsView(APIView):
+    """Spending analytics scoped to the logged-in merchant's own transactions"""
+    permission_classes = [IsAuthenticated, IsMerchant]
+
+    def get(self, request):
+        merchant = _get_own_merchant_or_404(request.user)
+        if merchant is None:
+            return Response({
+                'status': 'error',
+                'message': 'No merchant business is linked to this account'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        period = request.query_params.get('period', 'month')
+        now = timezone.now()
+        period_days = {'week': 7, 'month': 30, 'year': 365}.get(period, 30)
+        start_date = now - timedelta(days=period_days)
+
+        txns = Transaction.objects.filter(
+            merchant_id=merchant.id,
+            type='payment',
+            status='completed',
+            created_at__gte=start_date,
+        )
+
+        daily_revenue = txns.values('created_at__date').annotate(
+            total=Sum('amount'), count=Count('id')
+        ).order_by('created_at__date')
+
+        return Response({
+            'status': 'success',
+            'data': {
+                'period': period,
+                'total_revenue': txns.aggregate(total=Sum('amount'))['total'] or 0,
+                'transaction_count': txns.count(),
+                'daily_revenue': list(daily_revenue),
+            }
+        })
+
+
+class MerchantSettlementListView(generics.ListAPIView):
+    """Read-only list of the logged-in merchant's own past settlements"""
+    serializer_class = SettlementSerializer
+    permission_classes = [IsAuthenticated, IsMerchant]
+
+    def get_queryset(self):
+        merchant = _get_own_merchant_or_404(self.request.user)
+        if merchant is None:
+            return Settlement.objects.none()
+        return Settlement.objects.filter(merchant=merchant)

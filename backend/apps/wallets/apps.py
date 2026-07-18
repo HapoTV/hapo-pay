@@ -6,3 +6,6 @@ class WalletsConfig(AppConfig):
     name = 'apps.wallets'
     label = 'wallets'
     verbose_name = 'Wallet Management'
+
+    def ready(self):
+        import apps.wallets.signals  # noqa: F401 — registers the post_save receiver

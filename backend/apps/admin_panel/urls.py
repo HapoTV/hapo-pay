@@ -16,6 +16,7 @@ urlpatterns = [
     path('users/<uuid:user_id>/activate/', views.UserActivateView.as_view(), name='user-activate'),
     path('merchants/pending/', views.MerchantVerificationView.as_view(), name='pending-merchants'),
     path('merchants/<uuid:merchant_id>/verify/', views.MerchantVerificationView.as_view(), name='verify-merchant'),
+    path('merchants/<uuid:merchant_id>/settlements/run/', views.MerchantSettlementRunView.as_view(), name='run-merchant-settlement'),
     path('analytics/', views.PlatformAnalyticsView.as_view(), name='platform-analytics'),
     path('fraud-monitoring/', views.FraudMonitoringView.as_view(), name='fraud-monitoring'),
 ]

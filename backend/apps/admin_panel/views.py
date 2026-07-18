@@ -273,6 +273,65 @@ class MerchantVerificationView(APIView):
         return Response({'status': 'success', 'message': message})
 
 
+class MerchantSettlementRunView(APIView):
+    """
+    POST /admin/merchants/<id>/settlements/run/
+    Body: {"period_start": ISO datetime, "period_end": ISO datetime}
+    Creates a Settlement covering the merchant's completed, not-yet-settled
+    transactions in that window. Does not itself move money — this records
+    what's owed; the actual payout/bank transfer is a separate, manual step
+    until a payment-provider payout integration exists.
+    """
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def post(self, request, merchant_id):
+        try:
+            merchant = Merchant.objects.get(id=merchant_id)
+        except Merchant.DoesNotExist:
+            return Response(
+                {'status': 'error', 'message': 'Merchant not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        period_start = request.data.get('period_start')
+        period_end = request.data.get('period_end')
+        if not period_start or not period_end:
+            return Response(
+                {'status': 'error', 'message': 'period_start and period_end are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        from apps.payments.serializers import SettlementSerializer
+        from apps.payments.services import SettlementService
+
+        settlement = SettlementService.run_settlement(
+            merchant=merchant,
+            period_start=period_start,
+            period_end=period_end,
+            initiated_by=request.user,
+        )
+
+        AuditLog.objects.create(
+            user=request.user,
+            action='run_merchant_settlement',
+            resource_type='settlement',
+            resource_id=str(settlement.id),
+            changes={
+                'merchant_id': str(merchant.id),
+                'net_amount': str(settlement.net_amount),
+                'transaction_count': settlement.transaction_count,
+            },
+            ip_address=request.META.get('REMOTE_ADDR'),
+            user_agent=request.META.get('HTTP_USER_AGENT', '')
+        )
+
+        return Response({
+            'status': 'success',
+            'message': 'Settlement created',
+            'data': SettlementSerializer(settlement).data
+        }, status=status.HTTP_201_CREATED)
+
+
 class PlatformAnalyticsView(APIView):
     """GET /admin/analytics/ — platform-wide stats"""
     permission_classes = [IsAuthenticated, IsAdmin]

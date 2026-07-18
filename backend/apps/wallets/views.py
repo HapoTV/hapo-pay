@@ -7,6 +7,8 @@ from django.db import transaction
 from django.utils import timezone
 from django.core.cache import cache
 from .models import Wallet, Transaction, SpendingLimit, MoneyRequest
+from .services import TransferService
+from apps.accounts.models import User
 from .serializers import (
     WalletSerializer, TransactionSerializer, SpendingLimitSerializer,
     MoneyRequestSerializer, TransferFundsSerializer, UpdateSpendingLimitSerializer,
@@ -83,7 +85,6 @@ class TransferFundsView(APIView):
     """Handle fund transfers between parent and child"""
     permission_classes = [IsAuthenticated, IsParent]
 
-    @transaction.atomic
     def post(self, request):
         serializer = TransferFundsSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -108,52 +109,41 @@ class TransferFundsView(APIView):
                 'message': 'You can only transfer to your own children'
             }, status=status.HTTP_403_FORBIDDEN)
 
-        # Get wallets
-        sender_wallet = Wallet.objects.select_for_update().get(user=sender)
-        recipient_wallet = Wallet.objects.select_for_update().get(user=recipient)
-
-        # Check sufficient balance
-        if sender_wallet.balance < amount:
+        # Delegate the actual money movement to TransferService, which runs
+        # fraud detection and does the balance-locked debit/credit atomically.
+        # (Previously this view reimplemented that logic inline, which meant
+        # fraud checks never ran on this endpoint.)
+        try:
+            txn = TransferService.transfer_funds(
+                sender=sender,
+                recipient=recipient,
+                amount=amount,
+                description=description
+            )
+        except ValueError as e:
             return Response({
                 'status': 'error',
-                'message': 'Insufficient balance'
+                'message': str(e)
             }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception:
+            return Response({
+                'status': 'error',
+                'message': 'Transfer failed. Please try again.'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        # Perform transfer
-        sender_wallet.deduct_balance(amount)
-        recipient_wallet.add_balance(amount)
-
-        # Create transaction records
-        Transaction.objects.create(
-            user=sender,
-            amount=amount,
-            type='transfer',
-            category='other',
-            status='completed',
-            description=f"Transfer to {recipient.email}: {description}",
-            reference_id=str(recipient.id)
-        )
-
-        Transaction.objects.create(
-            user=recipient,
-            amount=amount,
-            type='transfer',
-            category='other',
-            status='completed',
-            description=f"Transfer from {sender.email}: {description}",
-            reference_id=str(sender.id)
-        )
-
-        # Send notification
-        NotificationService.send_notification(
-            user=recipient,
-            title="Money Received!",
-            body=f"You've received {amount} {sender_wallet.currency} from your parent",
-            notification_type='transfer'
-        )
+        if txn.status == 'frozen' and txn.is_flagged:
+            # Fraud rules froze this transfer for review — funds were not moved.
+            return Response({
+                'status': 'pending_review',
+                'message': 'Transfer flagged for review and has not been completed.',
+                'data': {'transaction_id': str(txn.id)}
+            }, status=status.HTTP_202_ACCEPTED)
 
         # Award points for receiving allowance (gamification)
         PointCalculatorService.award_points(recipient, 10, 'transfer_received')
+
+        sender_wallet = Wallet.objects.get(user=sender)
+        recipient_wallet = Wallet.objects.get(user=recipient)
 
         return Response({
             'status': 'success',

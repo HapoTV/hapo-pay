@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 from django.contrib.auth import authenticate
 from django.core.mail import send_mail
 from django.conf import settings
+from django.db import transaction
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import User, Profile, ParentProfile, StudentProfile
 from .serializers import (
@@ -24,6 +25,7 @@ class RegisterView(generics.CreateAPIView):
     permission_classes = [AllowAny]
     serializer_class = RegisterSerializer
 
+    @transaction.atomic
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -53,6 +55,18 @@ class RegisterView(generics.CreateAPIView):
             StudentProfile.objects.create(
                 user=user,
                 parent=None  # To be set later
+            )
+        elif data['role'] == 'merchant':
+            from apps.payments.models import Merchant
+            Merchant.objects.create(
+                owner=user,
+                name=data['full_name'],
+                business_registration=data['business_registration'],
+                email=data['email'],
+                phone=data.get('phone_number', ''),
+                address=data['business_address'],
+                category=data['business_category'],
+                verified=False,  # Goes through the existing admin MerchantVerificationView
             )
 
         # Create user in Supabase Auth

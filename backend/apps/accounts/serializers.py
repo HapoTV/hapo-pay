@@ -38,8 +38,18 @@ class RegisterSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, validators=[validate_password])
     confirm_password = serializers.CharField(write_only=True)
     full_name = serializers.CharField(max_length=255)
-    role = serializers.ChoiceField(choices=['parent', 'student'])
+    role = serializers.ChoiceField(choices=['parent', 'student', 'merchant'])
     phone_number = serializers.CharField(max_length=15, required=False)
+
+    # Required only when role='merchant' — Merchant.business_registration is
+    # a required, unique field, so it can't be filled in with a placeholder
+    # and completed later the way StudentProfile.parent is.
+    business_registration = serializers.CharField(max_length=100, required=False)
+    business_category = serializers.ChoiceField(
+        choices=['retail', 'restaurant', 'transport', 'entertainment', 'education', 'healthcare', 'airtime', 'other'],
+        required=False
+    )
+    business_address = serializers.CharField(required=False)
 
     def validate(self, data):
         if data['password'] != data['confirm_password']:
@@ -47,6 +57,21 @@ class RegisterSerializer(serializers.Serializer):
 
         if User.objects.filter(email=data['email']).exists():
             raise serializers.ValidationError({"email": "User with this email already exists"})
+
+        if data['role'] == 'merchant':
+            missing = [
+                field for field in ('business_registration', 'business_category', 'business_address')
+                if not data.get(field)
+            ]
+            if missing:
+                raise serializers.ValidationError({
+                    field: 'This field is required when registering as a merchant.' for field in missing
+                })
+            from apps.payments.models import Merchant
+            if Merchant.objects.filter(business_registration=data['business_registration']).exists():
+                raise serializers.ValidationError({
+                    'business_registration': 'A merchant with this registration number already exists.'
+                })
 
         return data
 

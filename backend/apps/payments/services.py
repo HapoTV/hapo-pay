@@ -1,6 +1,9 @@
 # apps/payments/services.py
 import requests
+from decimal import Decimal
 from django.conf import settings
+from django.db import transaction
+from django.db.models import Sum, Count
 import logging
 
 logger = logging.getLogger(__name__)
@@ -92,3 +95,60 @@ class TransportAPIService:
                 'success': False,
                 'error': str(e)
             }
+
+
+class SettlementService:
+    """Calculate and record merchant payout batches."""
+
+    # No product/finance-confirmed fee schedule exists yet — defaults to 0%
+    # (full pass-through) unless MERCHANT_SETTLEMENT_FEE_PERCENT is set.
+    # Treat this as a placeholder, not a real business decision.
+    DEFAULT_FEE_PERCENT = Decimal('0')
+
+    @staticmethod
+    @transaction.atomic
+    def run_settlement(merchant, period_start, period_end, initiated_by):
+        """
+        Create a Settlement covering the merchant's completed, not-yet-settled
+        transactions in [period_start, period_end). Transactions already
+        attached to a prior Settlement (via the M2M) are excluded so nothing
+        is ever paid out twice.
+        """
+        from apps.wallets.models import Transaction
+        from .models import Settlement
+
+        eligible_transactions = Transaction.objects.select_for_update().filter(
+            merchant_id=merchant.id,
+            type='payment',
+            status='completed',
+            created_at__gte=period_start,
+            created_at__lt=period_end,
+            settlements__isnull=True,
+        )
+
+        aggregates = eligible_transactions.aggregate(total=Sum('amount'), count=Count('id'))
+        gross_amount = aggregates['total'] or Decimal('0')
+        transaction_count = aggregates['count'] or 0
+
+        fee_percent = getattr(settings, 'MERCHANT_SETTLEMENT_FEE_PERCENT', SettlementService.DEFAULT_FEE_PERCENT)
+        fee_amount = (gross_amount * Decimal(str(fee_percent)) / Decimal('100')).quantize(Decimal('0.01'))
+        net_amount = gross_amount - fee_amount
+
+        settlement = Settlement.objects.create(
+            merchant=merchant,
+            period_start=period_start,
+            period_end=period_end,
+            transaction_count=transaction_count,
+            gross_amount=gross_amount,
+            fee_amount=fee_amount,
+            net_amount=net_amount,
+            status='pending',
+            initiated_by=initiated_by,
+        )
+        settlement.transactions.set(eligible_transactions)
+
+        logger.info(
+            f"Settlement created | merchant={merchant.id} | "
+            f"txns={transaction_count} | net={net_amount}"
+        )
+        return settlement

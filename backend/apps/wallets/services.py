@@ -65,27 +65,6 @@ class TransferService:
                 reference_id=str(sender.id)
             )
 
-            # # Create transaction records
-            # Transaction.objects.create(
-            #     user=sender,
-            #     amount=amount,
-            #     type='transfer',
-            #     category=category,
-            #     status='completed',
-            #     description=f"Transfer to {recipient.email}: {description}",
-            #     reference_id=str(recipient.id)
-            # )
-
-            # transaction_record = Transaction.objects.create(
-            #     user=recipient,
-            #     amount=amount,
-            #     type='transfer',
-            #     category=category,
-            #     status='completed',
-            #     description=f"Transfer from {sender.email}: {description}",
-            #     reference_id=str(sender.id)
-            # )
-
             # Send notification
             NotificationService.send_notification(
                 user=recipient,
@@ -127,8 +106,17 @@ class LimitCheckerService:
             pass
 
 
-class NotificationService:
-    """Handle notifications for wallet events"""
+class WalletAlertService:
+    """
+    Wallet-specific alert helpers, built on top of the shared NotificationService.
+
+    NOTE: this used to be a class named `NotificationService` defined in this
+    same file, which shadowed the `NotificationService` imported above at
+    module scope. Every call site below resolved to *this* class at call
+    time and crashed with AttributeError since it had no `send_notification`
+    method — which rolled back every `@transaction.atomic` transfer that
+    tried to notify a recipient. Renamed to fix that collision.
+    """
 
     @staticmethod
     def send_low_balance_alert(user, current_balance, threshold=50):

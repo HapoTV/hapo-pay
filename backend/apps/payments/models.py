@@ -45,6 +45,9 @@ class Merchant(models.Model):
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    owner = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+                                 related_name='merchant_business', null=True, blank=True,
+                                 limit_choices_to={'role': 'merchant'})
     name = models.CharField(max_length=200)
     business_registration = models.CharField(max_length=100, unique=True)
     email = models.EmailField()
@@ -209,3 +212,45 @@ class FraudAlert(models.Model):
         ]
     def __str__(self):
         return f"FraudAlert [{self.severity}] - {self.user.email} - {self.status}"
+
+
+class Settlement(models.Model):
+    """A payout batch of a merchant's completed transactions."""
+
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('processing', 'Processing'),
+        ('paid', 'Paid'),
+        ('failed', 'Failed'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    merchant = models.ForeignKey(Merchant, on_delete=models.CASCADE, related_name='settlements')
+    # M2M rather than a FK on Transaction: avoids a payments->wallets migration
+    # ordering dependency on a field that lives on the wallets side, and
+    # Transaction.merchant_id is a bare UUID (not a real FK) so this is the
+    # cleanest way to track exactly which transactions a payout covered.
+    transactions = models.ManyToManyField('wallets.Transaction', related_name='settlements', blank=True)
+    period_start = models.DateTimeField()
+    period_end = models.DateTimeField()
+    transaction_count = models.PositiveIntegerField(default=0)
+    gross_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    fee_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    net_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    initiated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                     related_name='initiated_settlements')
+    paid_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'settlements'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['merchant', 'status']),
+            models.Index(fields=['period_start', 'period_end']),
+        ]
+
+    def __str__(self):
+        return f"Settlement for {self.merchant.name} - {self.net_amount} ({self.status})"
