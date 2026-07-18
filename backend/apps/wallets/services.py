@@ -38,6 +38,33 @@ class TransferService:
         except Exception as e:
             logger.error(f"Failed to broadcast balance update: {str(e)}")
 
+
+    @staticmethod
+    def broadcast_spending_alert(user, amount, category):
+        """Broadcast spending alert via WebSocket."""
+        try:
+            channel_layer = get_channel_layer()
+
+            async_to_sync(channel_layer.group_send)(
+                f"wallet_{user.id}",
+                {
+                    "type": "transaction_notification",
+                    "transaction": {
+                        "message": f"You spent {amount}",
+                        "amount": str(amount),
+                        "category": category,
+                    },
+                    "timestamp": timezone.now().isoformat(),
+                },
+            )
+
+            logger.info(
+                f"Broadcasted spending alert for user {user.id}"
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to broadcast spending alert: {str(e)}")
+    
     @staticmethod
     @transaction.atomic
     def transfer_funds(sender, recipient, amount, description="", category="other"):
@@ -74,9 +101,15 @@ class TransferService:
             sender_wallet.deduct_balance(amount)
             recipient_wallet.add_balance(amount)
 
-            # Broadcast live balance updates
+                       # Broadcast live balance updates
             TransferService.broadcast_balance_update(sender_wallet)
             TransferService.broadcast_balance_update(recipient_wallet)
+
+            TransferService.broadcast_spending_alert(
+                sender,
+                amount,
+                category,
+            )
 
             sender_txn.status = "completed"
             sender_txn.save()
