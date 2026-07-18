@@ -43,7 +43,7 @@ jobs:
           flake8 . \
             --max-line-length=88 \
             --extend-ignore=E203,W503 \
-            --exclude=migrations,__pycache__,.git
+            --exclude=migrations,__pycache__,.git,.venv,staticfiles,media
 
       - name: Check import order (isort)
         run: isort --check-only --diff . --skip migrations
@@ -108,7 +108,7 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          coverage run -m pytest tests/ -v --tb=short
+          coverage run -m pytest -v --tb=short
           coverage report --fail-under=60
           coverage xml
 
