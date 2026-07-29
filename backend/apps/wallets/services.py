@@ -2,11 +2,7 @@
 from django.db import transaction
 from django.utils import timezone
 from decimal import Decimal
-<<<<<<< HEAD
-=======
-
 from apps.payments.fraud_detection import check_transaction, freeze_and_alert
->>>>>>> 709515cb3e489a1bb965b0fc271ee6100075da4a
 from .models import Wallet, Transaction, SpendingLimit
 from apps.notifications.services import NotificationService
 import logging
@@ -14,7 +10,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-<<<<<<< HEAD
 class CategoryService:
     """
     Transaction categorization system.
@@ -37,13 +32,13 @@ class CategoryService:
     # determines the transaction category automatically.
     MERCHANT_TO_TRANSACTION_CATEGORY = {
         'restaurant': 'food',
-        'retail':     'shopping',
-        'transport':  'transport',
+        'retail': 'shopping',
+        'transport': 'transport',
         'entertainment': 'entertainment',
-        'education':  'education',
+        'education': 'education',
         'healthcare': 'health',
-        'airtime':    'airtime',
-        'other':      'other',
+        'airtime': 'airtime',
+        'other': 'other',
     }
 
     @staticmethod
@@ -95,6 +90,116 @@ class CategoryService:
         return 'other'
 
 
+class TransferService:
+    """
+    Handle fund transfers between users with proper locking and fraud detection.
+
+    This service ensures that transfers are atomic and prevent race conditions
+    by using select_for_update() to lock wallet rows during the transaction.
+    """
+
+    @staticmethod
+    @transaction.atomic
+    def transfer_funds(sender, recipient, amount, description="", category='other'):
+        """
+        Transfer funds between two users with fraud detection.
+
+        Args:
+            sender: User object sending money
+            recipient: User object receiving money
+            amount: Decimal amount to transfer
+            description: Optional description of the transfer
+            category: Transaction category (default: 'other')
+
+        Returns:
+            Transaction object for the recipient
+
+        Raises:
+            ValueError: If insufficient balance or wallet not found
+        """
+        try:
+            # Lock both wallets in a consistent order to prevent deadlocks
+            wallets = Wallet.objects.select_for_update().filter(
+                user__in=[sender, recipient]
+            ).order_by('id')
+
+            wallet_map = {wallet.user_id: wallet for wallet in wallets}
+
+            sender_wallet = wallet_map.get(sender.id)
+            recipient_wallet = wallet_map.get(recipient.id)
+
+            if not sender_wallet or not recipient_wallet:
+                raise ValueError("One or both wallets not found")
+
+            if sender_wallet.balance < amount:
+                raise ValueError("Insufficient balance")
+
+            # Create pending transaction for fraud detection
+            sender_txn = Transaction(
+                user=sender,
+                amount=amount,
+                type='transfer',
+                category=category,
+                status='pending',
+                description=f"Transfer to {recipient.email}: {description}",
+                reference_id=str(recipient.id),
+            )
+
+            # Check for fraud
+            is_suspicious, reasons, severity, alert_type = check_transaction(sender_txn, sender)
+            if is_suspicious:
+                sender_txn.save()
+                freeze_and_alert(sender_txn, reasons, severity, alert_type)
+                logger.warning(
+                    f"Transfer frozen for fraud review | sender={sender.id} | "
+                    f"amount={amount} | reasons={reasons}"
+                )
+                return sender_txn
+
+            # Perform transfer
+            sender_wallet.balance -= Decimal(str(amount))
+            sender_wallet.save(update_fields=['balance', 'updated_at'])
+
+            recipient_wallet.balance += Decimal(str(amount))
+            recipient_wallet.save(update_fields=['balance', 'updated_at'])
+
+            # Update sender transaction to completed
+            sender_txn.status = 'completed'
+            sender_txn.save()
+
+            # Create recipient transaction
+            recipient_txn = Transaction.objects.create(
+                user=recipient,
+                amount=amount,
+                type='transfer',
+                category=category,
+                status='completed',
+                description=f"Transfer from {sender.email}: {description}",
+                reference_id=str(sender.id)
+            )
+
+            # Send notification to recipient
+            try:
+                NotificationService.send_notification(
+                    user=recipient,
+                    title="Money Received!",
+                    body=f"You've received R{amount} from {sender.profile.full_name}",
+                    notification_type='transfer'
+                )
+            except Exception:
+                # Don't fail the transfer if notification fails
+                pass
+
+            logger.info(
+                f"Transfer complete: {sender.email} → {recipient.email} R{amount}"
+            )
+            return recipient_txn
+
+        except Exception as e:
+            logger.error(f"Transfer failed: {sender.email} → {recipient.email} | {str(e)}")
+            raise
+
+
 class WalletService:
     """
     Central service for all wallet balance operations.
@@ -103,12 +208,6 @@ class WalletService:
     this service. Using select_for_update() ensures the wallet row is locked
     at the database level for the duration of the transaction, preventing
     race conditions when multiple requests hit the server simultaneously.
-
-    How locking works:
-    - select_for_update() issues a SELECT ... FOR UPDATE SQL statement
-    - The database locks the row until the @transaction.atomic block completes
-    - Any other request trying to read the same wallet row must wait
-    - This guarantees only one operation can modify a balance at a time
     """
 
     @staticmethod
@@ -124,8 +223,7 @@ class WalletService:
         - recipient account is frozen
         """
         try:
-            # Lock both wallets in a consistent order (by UUID) to prevent
-            # deadlocks when two transfers happen in opposite directions simultaneously
+            # Lock both wallets in a consistent order (by UUID) to prevent deadlocks
             wallets = Wallet.objects.select_for_update().filter(
                 user__in=[sender, recipient]
             ).order_by('id')
@@ -150,61 +248,15 @@ class WalletService:
 
             # Record both sides of the transfer
             Transaction.objects.create(
-=======
-
-
-
-class TransferService:
-    """Handle all fund transfer operations"""
-
-    @staticmethod
-    @transaction.atomic
-    def transfer_funds(sender, recipient, amount, description="", category='other'):
-        """Transfer funds between two users"""
-        try:
-            sender_wallet = Wallet.objects.select_for_update().get(user=sender)
-            recipient_wallet = Wallet.objects.select_for_update().get(user=recipient)
-
-            if sender_wallet.balance < amount:
-                raise ValueError("Insufficient balance")
-            
-            sender_txn = Transaction(
->>>>>>> 709515cb3e489a1bb965b0fc271ee6100075da4a
                 user=sender,
                 amount=amount,
                 type='transfer',
                 category=category,
-<<<<<<< HEAD
                 status='completed',
                 description=f"Transfer to {recipient.email}: {description}",
                 reference_id=str(recipient.id)
             )
             recipient_tx = Transaction.objects.create(
-=======
-                status='pending',
-                description=f"Transfer to {recipient.email}: {description}",
-                reference_id=str(recipient.id),
-            )
-
-            is_suspicious, reasons, severity, alert_type = check_transaction(sender_txn,sender)
-            if is_suspicious:
-                sender_txn.save()
-                freeze_and_alert(sender_txn, reasons, severity,alert_type)
-                logger.warning(
-                    f"Transfer frozen for fraud review | sender={sender.id} | "
-                    f"amount={amount} | reasons={reasons}"
-                )
-                return sender_txn
-
-            # Perform transfer
-            sender_wallet.deduct_balance(amount)
-            recipient_wallet.add_balance(amount)
-
-            sender_txn.status = 'completed'
-            sender_txn.save()
-
-            recipient_txn = Transaction.objects.create(
->>>>>>> 709515cb3e489a1bb965b0fc271ee6100075da4a
                 user=recipient,
                 amount=amount,
                 type='transfer',
@@ -214,7 +266,6 @@ class TransferService:
                 reference_id=str(sender.id)
             )
 
-<<<<<<< HEAD
             NotificationService.send_notification(
                 user=recipient,
                 title="Money Received!",
@@ -272,8 +323,8 @@ class TransferService:
     @staticmethod
     @transaction.atomic
     def deduct(user, amount, tx_type='payment', category='other',
-                description='', merchant_name=None, merchant_id=None,
-                merchant_category=None):
+               description='', merchant_name=None, merchant_id=None,
+               merchant_category=None):
         """
         Deduct from a wallet (payments, airtime, transport).
         Wallet is locked before deducting.
@@ -379,6 +430,14 @@ class LimitCheckerService:
             return True  # No limit set — allow
 
     @staticmethod
+    def update_spent_amounts(student, amount, category):
+        """
+        Update spent amounts after a transaction.
+        Alias for record_spending for backward compatibility.
+        """
+        return LimitCheckerService.record_spending(student, amount, category)
+
+    @staticmethod
     @transaction.atomic
     def record_spending(student, amount, category):
         """
@@ -416,87 +475,11 @@ class WalletAlertService:
                 user=user,
                 title="Low Balance Alert",
                 body=f"Your balance is R{current_balance}. Consider requesting funds.",
-=======
-            # # Create transaction records
-            # Transaction.objects.create(
-            #     user=sender,
-            #     amount=amount,
-            #     type='transfer',
-            #     category=category,
-            #     status='completed',
-            #     description=f"Transfer to {recipient.email}: {description}",
-            #     reference_id=str(recipient.id)
-            # )
-
-            # transaction_record = Transaction.objects.create(
-            #     user=recipient,
-            #     amount=amount,
-            #     type='transfer',
-            #     category=category,
-            #     status='completed',
-            #     description=f"Transfer from {sender.email}: {description}",
-            #     reference_id=str(sender.id)
-            # )
-
-            # Send notification
-            NotificationService.send_notification(
-                user=recipient,
-                title="Money Received!",
-                body=f"You've received {amount} from {sender.profile.full_name}",
-                notification_type='transfer'
-            )
-
-            return recipient_txn
-
-        except Exception as e:
-            logger.error(f"Transfer failed: {str(e)}")
-            raise
-
-
-class LimitCheckerService:
-    """Check spending limits for students"""
-
-    @staticmethod
-    def check_spending_limit(student, amount, category):
-        """Check if transaction is within spending limits"""
-        try:
-            limit = SpendingLimit.objects.get(child=student, category=category, is_enabled=True)
-            return limit.check_limit(amount)
-        except SpendingLimit.DoesNotExist:
-            # No limit set for this category
-            return True
-
-    @staticmethod
-    def update_spent_amounts(student, amount, category):
-        """Update spent amounts after a transaction"""
-        try:
-            limit = SpendingLimit.objects.get(child=student, category=category)
-            limit.daily_spent += amount
-            limit.weekly_spent += amount
-            limit.monthly_spent += amount
-            limit.save()
-        except SpendingLimit.DoesNotExist:
-            pass
-
-
-class NotificationService:
-    """Handle notifications for wallet events"""
-
-    @staticmethod
-    def send_low_balance_alert(user, current_balance, threshold=50):
-        """Send alert when balance is low"""
-        if current_balance <= threshold:
-            NotificationService.send_notification(
-                user=user,
-                title="Low Balance Alert",
-                body=f"Your balance is {current_balance}. Consider requesting funds.",
->>>>>>> 709515cb3e489a1bb965b0fc271ee6100075da4a
                 notification_type='alert'
             )
 
     @staticmethod
     def send_spending_alert(parent, child, amount, category):
-<<<<<<< HEAD
         """Notify parent when child makes a payment."""
         NotificationService.send_notification(
             user=parent,
@@ -522,9 +505,10 @@ class SpendingLimitEnforcer:
 
     class SpendingLimitExceeded(Exception):
         """Raised when a student's payment would exceed their spending limit."""
+
         def __init__(self, category, limit_type, limit_value, spent, amount):
             self.category = category
-            self.limit_type = limit_type   # 'daily', 'weekly', or 'monthly'
+            self.limit_type = limit_type  # 'daily', 'weekly', or 'monthly'
             self.limit_value = limit_value
             self.spent = spent
             self.amount = amount
@@ -653,13 +637,3 @@ class SpendingLimitEnforcer:
 
         except (SpendingLimit.DoesNotExist, Exception):
             pass  # Don't block payment flow for warnings
-=======
-        """Send alert to parent about child spending"""
-        NotificationService.send_notification(
-            user=parent,
-            title="Spending Alert",
-            body=f"{child.profile.full_name} spent {amount} on {category}",
-            notification_type='spending_alert',
-            metadata={'child_id': str(child.id), 'amount': str(amount)}
-        )
->>>>>>> 709515cb3e489a1bb965b0fc271ee6100075da4a
