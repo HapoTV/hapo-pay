@@ -29,19 +29,6 @@ class Wallet(models.Model):
         return f"{self.user.email} - {self.currency} {self.balance}"
 
     def add_balance(self, amount):
-<<<<<<< HEAD
-        """Add amount to wallet balance"""
-        self.balance += amount
-        self.save()
-
-    def deduct_balance(self, amount):
-        """Deduct amount from wallet balance if sufficient"""
-        if self.balance >= amount:
-            self.balance -= amount
-            self.save()
-            return True
-        return False
-=======
         """Credit Wallet. Use select_for_update() at the call site."""
         if not self.is_active:
             raise ValueError('Cannot credit an inactive Wallet.')
@@ -49,7 +36,7 @@ class Wallet(models.Model):
         self.save(update_fields=['balance', 'updated_at'])
 
     def deduct_balance(self, amount):
-        """Debit wallet.Return True on Sucess, False if insufficient funds"""
+        """Debit wallet. Return True on Success, False if insufficient funds."""
         if not self.is_active:
             raise ValueError('Cannot debit an inactive Wallet.')
         if self.balance < amount:
@@ -57,8 +44,6 @@ class Wallet(models.Model):
         self.balance -= amount
         self.save(update_fields=['balance', 'updated_at'])
         return True
-        
->>>>>>> 709515cb3e489a1bb965b0fc271ee6100075da4a
 
 
 class Transaction(models.Model):
@@ -86,18 +71,12 @@ class Transaction(models.Model):
 
     STATUS_CHOICES = [
         ('pending', 'Pending'),
-<<<<<<< HEAD
-=======
         ('processing', 'Processing'),
->>>>>>> 709515cb3e489a1bb965b0fc271ee6100075da4a
         ('completed', 'Completed'),
         ('failed', 'Failed'),
         ('cancelled', 'Cancelled'),
         ('refunded', 'Refunded'),
-<<<<<<< HEAD
-=======
         ('frozen', 'Frozen'),
->>>>>>> 709515cb3e489a1bb965b0fc271ee6100075da4a
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -113,11 +92,8 @@ class Transaction(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-<<<<<<< HEAD
-=======
     is_flagged = models.BooleanField(default=False, db_index=True)
     fraud_reasons = models.JSONField(default=list, blank=True)
->>>>>>> 709515cb3e489a1bb965b0fc271ee6100075da4a
 
     class Meta:
         db_table = 'transactions'

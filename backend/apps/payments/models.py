@@ -4,25 +4,20 @@ from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 import uuid
 
-<<<<<<< HEAD
-
-=======
+# Fraud choices constants
 FRAUD_SEVERITY_CHOICES = [
     ('low', 'Low'),
     ('medium', 'Medium'),
-    ('high','High'),
+    ('high', 'High'),
     ('critical', 'Critical'),
 ]
 
 FRAUD_STATUS_CHOICES = [
-    ('large_single_transaction', 'Large Single Transaction'),
-    ('velocity_hourly', 'Hourly Velocity'),
-    ('velocity_daily', 'Daily Velocity'),
-    ('hourly_volume_exceeded', 'Hourly Volume Exceeded'),
-    ('unusual_hours', 'Unusual Hours'),
-    ('new_recipient_large', ' Large To New Recipient'),
-    ('multiple_rules', 'Multiple Rules Triggered'),
-    ('rapid_succession', 'Rapid Succession'),
+    ('pending', 'Pending'),
+    ('investigating', 'Investigating'),
+    ('confirmed', 'Confirmed'),
+    ('false_positive', 'False Positive'),
+    ('resolved', 'Resolved'),
 ]
 
 FRAUD_ALERT_TYPE_CHOICES = [
@@ -35,7 +30,8 @@ FRAUD_ALERT_TYPE_CHOICES = [
     ('multiple_rules', 'Multiple Rules Triggered'),
     ('rapid_succession', 'Rapid Succession'),
 ]
->>>>>>> 709515cb3e489a1bb965b0fc271ee6100075da4a
+
+
 class Merchant(models.Model):
     CATEGORY_CHOICES = [
         ('retail', 'Retail'),
@@ -133,11 +129,7 @@ class AirtimePurchase(models.Model):
     phone_number = models.CharField(max_length=15)
     amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(1)])
     provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES)
-<<<<<<< HEAD
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-=======
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='pending')
->>>>>>> 709515cb3e489a1bb965b0fc271ee6100075da4a
     transaction_id = models.CharField(max_length=100, unique=True, null=True, blank=True)
     metadata = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -177,11 +169,7 @@ class TransportTicket(models.Model):
     amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0.01)])
     seat_number = models.CharField(max_length=20, blank=True, null=True)
     qr_code = models.TextField(blank=True, null=True)  # Base64 encoded ticket QR
-<<<<<<< HEAD
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-=======
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='pending')
->>>>>>> 709515cb3e489a1bb965b0fc271ee6100075da4a
     reference = models.CharField(max_length=100, unique=True, null=True, blank=True)
     metadata = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -192,11 +180,7 @@ class TransportTicket(models.Model):
         ordering = ['-departure_time']
 
     def __str__(self):
-<<<<<<< HEAD
         return f"{self.ticket_type} - {self.route} ({self.amount})"
-=======
-        return f"{self.ticket_type} - {self.route} ({self.amount})"
-
 
 
 class FraudAlert(models.Model):
@@ -205,8 +189,8 @@ class FraudAlert(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='fraud_alerts')
     alert_type = models.CharField(max_length=50, choices=FRAUD_ALERT_TYPE_CHOICES, default='multiple_rules')
     reasons = models.JSONField(default=list)
-    severity = models.CharField(max_length=30, choices=FRAUD_SEVERITY_CHOICES,default='low')
-    status= models.CharField(max_length=30,choices=FRAUD_STATUS_CHOICES,default='pending')
+    severity = models.CharField(max_length=30, choices=FRAUD_SEVERITY_CHOICES, default='low')
+    status = models.CharField(max_length=30, choices=FRAUD_STATUS_CHOICES, default='pending')
     reviewed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
                                     related_name='reviewed_fraud_alerts')
     reviewed_at = models.DateTimeField(null=True, blank=True)
@@ -215,13 +199,14 @@ class FraudAlert(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        db_table = 'fraud_alerts'
         ordering = ['-created_at']
-        indexes =[
+        indexes = [
             models.Index(fields=['severity']),
             models.Index(fields=['status']),
             models.Index(fields=['user']),
             models.Index(fields=['created_at']),
         ]
+
     def __str__(self):
         return f"FraudAlert [{self.severity}] - {self.user.email} - {self.status}"
->>>>>>> 709515cb3e489a1bb965b0fc271ee6100075da4a
