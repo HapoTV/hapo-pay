@@ -36,7 +36,7 @@ class Wallet(models.Model):
         self.save(update_fields=['balance', 'updated_at'])
 
     def deduct_balance(self, amount):
-        """Debit wallet.Return True on Sucess, False if insufficient funds"""
+        """Debit wallet. Return True on Success, False if insufficient funds."""
         if not self.is_active:
             raise ValueError('Cannot debit an inactive Wallet.')
         if self.balance < amount:
@@ -44,7 +44,10 @@ class Wallet(models.Model):
         self.balance -= amount
         self.save(update_fields=['balance', 'updated_at'])
         return True
+<<<<<<< HEAD
         
+=======
+>>>>>>> 33e04970 (fix: Resolve merge conflicts and fix import errors)
 
 
 class Transaction(models.Model):

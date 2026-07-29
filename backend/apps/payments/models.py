@@ -4,22 +4,23 @@ from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 import uuid
 
+<<<<<<< HEAD
+=======
+# Fraud choices constants
+>>>>>>> 33e04970 (fix: Resolve merge conflicts and fix import errors)
 FRAUD_SEVERITY_CHOICES = [
     ('low', 'Low'),
     ('medium', 'Medium'),
-    ('high','High'),
+    ('high', 'High'),
     ('critical', 'Critical'),
 ]
 
 FRAUD_STATUS_CHOICES = [
-    ('large_single_transaction', 'Large Single Transaction'),
-    ('velocity_hourly', 'Hourly Velocity'),
-    ('velocity_daily', 'Daily Velocity'),
-    ('hourly_volume_exceeded', 'Hourly Volume Exceeded'),
-    ('unusual_hours', 'Unusual Hours'),
-    ('new_recipient_large', ' Large To New Recipient'),
-    ('multiple_rules', 'Multiple Rules Triggered'),
-    ('rapid_succession', 'Rapid Succession'),
+    ('pending', 'Pending'),
+    ('investigating', 'Investigating'),
+    ('confirmed', 'Confirmed'),
+    ('false_positive', 'False Positive'),
+    ('resolved', 'Resolved'),
 ]
 
 FRAUD_ALERT_TYPE_CHOICES = [
@@ -32,6 +33,11 @@ FRAUD_ALERT_TYPE_CHOICES = [
     ('multiple_rules', 'Multiple Rules Triggered'),
     ('rapid_succession', 'Rapid Succession'),
 ]
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> 33e04970 (fix: Resolve merge conflicts and fix import errors)
 class Merchant(models.Model):
     CATEGORY_CHOICES = [
         ('retail', 'Retail'),
@@ -181,7 +187,10 @@ class TransportTicket(models.Model):
 
     def __str__(self):
         return f"{self.ticket_type} - {self.route} ({self.amount})"
+<<<<<<< HEAD
 
+=======
+>>>>>>> 33e04970 (fix: Resolve merge conflicts and fix import errors)
 
 
 class FraudAlert(models.Model):
@@ -190,8 +199,8 @@ class FraudAlert(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='fraud_alerts')
     alert_type = models.CharField(max_length=50, choices=FRAUD_ALERT_TYPE_CHOICES, default='multiple_rules')
     reasons = models.JSONField(default=list)
-    severity = models.CharField(max_length=30, choices=FRAUD_SEVERITY_CHOICES,default='low')
-    status= models.CharField(max_length=30,choices=FRAUD_STATUS_CHOICES,default='pending')
+    severity = models.CharField(max_length=30, choices=FRAUD_SEVERITY_CHOICES, default='low')
+    status = models.CharField(max_length=30, choices=FRAUD_STATUS_CHOICES, default='pending')
     reviewed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
                                     related_name='reviewed_fraud_alerts')
     reviewed_at = models.DateTimeField(null=True, blank=True)
@@ -200,12 +209,14 @@ class FraudAlert(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        db_table = 'fraud_alerts'
         ordering = ['-created_at']
-        indexes =[
+        indexes = [
             models.Index(fields=['severity']),
             models.Index(fields=['status']),
             models.Index(fields=['user']),
             models.Index(fields=['created_at']),
         ]
+
     def __str__(self):
         return f"FraudAlert [{self.severity}] - {self.user.email} - {self.status}"
