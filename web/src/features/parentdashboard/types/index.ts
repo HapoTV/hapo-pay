@@ -3,4 +3,4 @@
  * Re-exporting from centralized types location
  */
 
-export { Child, ParentUser, SafetyAlert, QuickAction } from '@/types/parent';
+export type { Child, ParentUser, SafetyAlert, QuickAction } from '@/types/parent';

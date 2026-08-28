@@ -10,7 +10,6 @@ import {
   DashboardSearchNotice,
   DashboardTopbar,
   DashboardTV,
-  EmergencyFundModal,
   WalletTopupModal,
   RecurringModal,
   RecurringFormModal,
@@ -56,9 +55,6 @@ export const ParentDashboard: React.FC = () => {
   const [parentData, setParentData] = useState(mockParentData);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSearchNotice, setShowSearchNotice] = useState(false);
-  const [showEmergencyModal, setShowEmergencyModal] = useState(false);
-  const [selectedChildId, setSelectedChildId] = useState('');
-  const [emergencyAmount, setEmergencyAmount] = useState('');
   const [showWalletTopupModal, setShowWalletTopupModal] = useState(false);
   const [topupChildId, setTopupChildId] = useState('');
   const [topupAmount, setTopupAmount] = useState('');
@@ -128,20 +124,6 @@ export const ParentDashboard: React.FC = () => {
   const handleLogout = () => {
     clearAuth();
     navigate('/login');
-  };
-
-  const closeEmergencyModal = () => {
-    setShowEmergencyModal(false);
-    setSelectedChildId('');
-    setEmergencyAmount('');
-  };
-
-  const handleSendEmergencyFunds = () => {
-    const amountValue = Number(emergencyAmount);
-    if (!selectedChildId || !amountValue || amountValue <= 0) return;
-    const child = parentData.children.find((c) => c.id === selectedChildId);
-    alert(`Send R${amountValue.toFixed(2)} to ${child?.name || 'selected child'} as an emergency transfer.`);
-    closeEmergencyModal();
   };
 
   const closeWalletTopupModal = () => {
@@ -360,22 +342,12 @@ export const ParentDashboard: React.FC = () => {
   const quickActionsAll = [
     {
       id: '1',
-      title: 'Emergency Fund Transfer',
-      icon: <HomeIcon className="w-6 h-6 text-rose-500" />,
-      onClick: () => {
-        setSelectedChildId('');
-        setEmergencyAmount('');
-        setShowEmergencyModal(true);
-      },
-    },
-    {
-      id: '2',
       title: 'Recurring Auto Payments',
       icon: <RefreshIcon className="w-6 h-6 text-rose-500" />,
       onClick: () => setShowRecurringModal(true),
     },
     {
-      id: '3',
+      id: '2',
       title: 'Wallet Top-up',
       icon: <WalletIcon className="w-6 h-6 text-rose-500" />,
       onClick: () => {
@@ -385,7 +357,7 @@ export const ParentDashboard: React.FC = () => {
       },
     },
     {
-      id: '4',
+      id: '3',
       title: 'Manage Spending Limits',
       icon: <ShieldIcon className="w-6 h-6 text-rose-500" />,
       onClick: () => {
@@ -394,7 +366,7 @@ export const ParentDashboard: React.FC = () => {
     },
   ];
 
-  const quickActions = [quickActionsAll[0], quickActionsAll[2]];
+  const quickActions = [quickActionsAll[0], quickActionsAll[1]];
 
   // Recharge Items
   const rechargeItems = [
@@ -764,18 +736,7 @@ export const ParentDashboard: React.FC = () => {
             <main className="flex-1">{renderContent()}</main>
           </div>
 
-          {/* Modals: Emergency, Wallet Topup, Recurring, Manage limits, Add Money */}
-
-                    <EmergencyFundModal
-            open={showEmergencyModal}
-            onClose={closeEmergencyModal}
-            children={parentData.children}
-            selectedChildId={selectedChildId}
-            onSelectChild={setSelectedChildId}
-            emergencyAmount={emergencyAmount}
-            onChangeAmount={setEmergencyAmount}
-            onSend={handleSendEmergencyFunds}
-          />
+          {/* Modals: Wallet Topup, Recurring, Manage limits, Add Money */}
 
                     <WalletTopupModal
             open={showWalletTopupModal}

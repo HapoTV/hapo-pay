@@ -7,3 +7,28 @@
     @apply bg-gray-50 text-gray-900 font-sans;
   }
 }
+
+/* Always-visible thin scrollbar for modal content where supported */
+.always-scrollbar {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(148,163,184,0.6) rgba(241,245,249,1);
+}
+
+.always-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.always-scrollbar::-webkit-scrollbar-track {
+  background: rgba(241,245,249,1);
+  border-radius: 9999px;
+}
+
+.always-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148,163,184,0.6);
+  border-radius: 9999px;
+  border: 2px solid rgba(241,245,249,1);
+}
+
+.always-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(148,163,184,0.8);
+}
