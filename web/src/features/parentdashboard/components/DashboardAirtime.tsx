@@ -3,9 +3,17 @@ import { Logo } from '../../../components/Logo';
 import { CloseIcon } from '../../../components/icons';
 import type { ParentUser } from '../types';
 
-type Contact = { id: string; number: string; name: string; network: string };
+type Contact = {
+  id: string;
+  number: string;
+  name: string;
+  network: string;
+};
 
-type DataBundlesByNetwork = Record<string, { id: string; label: string }[]>;
+type DataBundlesByNetwork = Record<
+  string,
+  { id: string; label: string }[]
+>;
 
 interface DashboardAirtimeProps {
   parentData: ParentUser;
@@ -37,7 +45,14 @@ interface DashboardAirtimeProps {
   handleConfirmBuyAirtime: () => void;
   showAirtimeConfirmation: boolean;
   handleAirtimePurchaseConfirmed: () => void;
-  mockAirtimeHistory: Array<{ id: string; number: string; type: string; amount: number; date: string; status: string }>;
+  mockAirtimeHistory: Array<{
+    id: string;
+    number: string;
+    type: string;
+    amount: number;
+    date: string;
+    status: string;
+  }>;
   dataBundlesByNetwork: DataBundlesByNetwork;
 }
 
@@ -74,124 +89,362 @@ export const DashboardAirtime: React.FC<DashboardAirtimeProps> = ({
   mockAirtimeHistory,
   dataBundlesByNetwork,
 }) => {
-  const contact = contacts.find((c) => c.id === selectedContactForBuy);
-  const bundleLabel = dataBundlesByNetwork[contact?.network || '']?.find((b) => b.id === selectedDataBundle)?.label;
+  const contact = contacts.find(
+    (c) => c.id === selectedContactForBuy
+  );
+
+  const bundleLabel =
+    dataBundlesByNetwork[contact?.network || '']?.find(
+      (b) => b.id === selectedDataBundle
+    )?.label;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <nav className="sticky top-0 z-50 bg-gradient-to-r from-rose-500 to-purple-600 text-white px-6 py-4 shadow-lg">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
+    <div className="min-h-screen bg-white text-gray-900 dark:bg-[#0D0B1A] dark:text-white transition-colors duration-200">
+      {/* Header */}
+      <nav
+        className="sticky top-0 z-50 px-4 py-4 text-white shadow-lg border-b border-gray-200/20 dark:border-[#2A2740] sm:px-6"
+        style={{
+          background:
+            'linear-gradient(135deg, #7C5CFC 0%, #3ED9C2 100%)',
+        }}
+      >
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
           <div className="flex items-center">
-            <Logo className="h-10 w-10 rounded-full bg-white/20 p-2 object-contain" alt="HapoPay logo" />
+            <Logo
+              className="h-10 w-10 rounded-full bg-white/20 p-2 object-contain"
+              alt="HapoPay logo"
+            />
           </div>
-          <div className="text-center"><h1 className="text-lg font-bold">Buy Airtime & Data</h1></div>
-          <button onClick={closeAirtimeModal} className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-full text-sm font-bold transition">
-            <CloseIcon className="w-5 h-5" />
-            Close
+
+          <div className="min-w-0 text-center">
+            <h1 className="text-base font-bold sm:text-lg">
+              Buy Airtime & Data
+            </h1>
+          </div>
+
+          <button
+            onClick={closeAirtimeModal}
+            className="flex shrink-0 items-center gap-2 rounded-full bg-white/20 px-3 py-2 text-xs font-bold transition hover:bg-white/30 sm:px-4 sm:text-sm"
+          >
+            <CloseIcon className="h-5 w-5" />
+            <span className="hidden sm:inline">Close</span>
           </button>
         </div>
       </nav>
 
       <div className="flex flex-col">
-        <main className="flex-1 px-4 py-6 sm:px-6 max-w-4xl mx-auto w-full">
-          <div className="flex gap-4 mb-6 border-b border-slate-200">
-            <button onClick={() => setAirtimeTab('buy')} className={`px-4 py-3 font-medium text-sm transition ${airtimeTab === 'buy' ? 'border-b-2 border-rose-500 text-rose-500' : 'text-slate-600 hover:text-slate-900'}`}>Buy</button>
-            <button onClick={() => setAirtimeTab('history')} className={`px-4 py-3 font-medium text-sm transition ${airtimeTab === 'history' ? 'border-b-2 border-rose-500 text-rose-500' : 'text-slate-600 hover:text-slate-900'}`}>History</button>
+        <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-6 sm:px-6">
+          {/* Tabs */}
+          <div className="mb-6 flex gap-2 overflow-x-auto border-b border-gray-200 dark:border-[#2A2740]">
+            <button
+              onClick={() => setAirtimeTab('buy')}
+              className={`shrink-0 px-4 py-3 text-sm font-medium transition ${
+                airtimeTab === 'buy'
+                  ? 'border-b-2 border-[#7C5CFC] text-[#6D4AFF] dark:text-[#B39DFF]'
+                  : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
+              }`}
+            >
+              Buy
+            </button>
+
+            <button
+              onClick={() => setAirtimeTab('history')}
+              className={`shrink-0 px-4 py-3 text-sm font-medium transition ${
+                airtimeTab === 'history'
+                  ? 'border-b-2 border-[#7C5CFC] text-[#6D4AFF] dark:text-[#B39DFF]'
+                  : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
+              }`}
+            >
+              History
+            </button>
           </div>
 
+          {/* Buy Tab */}
           {airtimeTab === 'buy' && (
-            <div className="px-6 py-6 space-y-5 max-h-[400px] overflow-y-auto">
-              <button onClick={handleAddContactClick} className="w-full rounded-2xl bg-rose-50 border-2 border-dashed border-rose-300 px-4 py-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-100 hover:border-rose-400">+ Add Contact</button>
+            <div className="max-h-[60vh] space-y-5 overflow-y-auto px-1 py-2 sm:px-2">
+              {/* Add Contact */}
+              <button
+                onClick={handleAddContactClick}
+                className="w-full rounded-2xl border-2 border-dashed border-[#7C5CFC]/40 bg-[#7C5CFC]/10 px-4 py-3 text-sm font-semibold text-[#6D4AFF] transition hover:border-[#7C5CFC]/60 hover:bg-[#7C5CFC]/20 dark:text-[#B39DFF]"
+              >
+                + Add Contact
+              </button>
 
+              {/* Add Contact Form */}
               {showAddContactForm && (
-                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
+                <div className="space-y-3 rounded-xl border border-gray-200 bg-white p-4 dark:border-[#2A2740] dark:bg-[#1A1830] transition-colors duration-200">
                   <div>
-                    <label className="text-xs font-medium text-slate-700">Contact Name</label>
-                    <input type="text" value={newContactName} onChange={(e) => setNewContactName(e.target.value)} placeholder="e.g., Sister" className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 shadow-sm focus:border-rose-500 focus:outline-none" />
+                    <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                      Contact Name
+                    </label>
+
+                    <input
+                      type="text"
+                      value={newContactName}
+                      onChange={(e) =>
+                        setNewContactName(e.target.value)
+                      }
+                      placeholder="e.g., Sister"
+                      className="mt-2 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-900 placeholder-gray-400 shadow-sm focus:border-[#7C5CFC] focus:outline-none dark:border-[#2A2740] dark:bg-[#0D0B1A] dark:text-white dark:placeholder-gray-500"
+                    />
                   </div>
+
                   <div>
-                    <label className="text-xs font-medium text-slate-700">Cellphone Number</label>
-                    <input type="tel" value={newContactNumber} onChange={(e) => setNewContactNumber(e.target.value)} placeholder="e.g., +27 81 234 5678" className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 shadow-sm focus:border-rose-500 focus:outline-none" />
+                    <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                      Cellphone Number
+                    </label>
+
+                    <input
+                      type="tel"
+                      value={newContactNumber}
+                      onChange={(e) =>
+                        setNewContactNumber(e.target.value)
+                      }
+                      placeholder="e.g., +27 81 234 5678"
+                      className="mt-2 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-900 placeholder-gray-400 shadow-sm focus:border-[#7C5CFC] focus:outline-none dark:border-[#2A2740] dark:bg-[#0D0B1A] dark:text-white dark:placeholder-gray-500"
+                    />
                   </div>
+
                   <div>
-                    <label className="text-xs font-medium text-slate-700">Network</label>
-                    <select value={newContactNetwork} onChange={(e) => setNewContactNetwork(e.target.value)} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 shadow-sm focus:border-rose-500 focus:outline-none">
+                    <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                      Network
+                    </label>
+
+                    <select
+                      value={newContactNetwork}
+                      onChange={(e) =>
+                        setNewContactNetwork(e.target.value)
+                      }
+                      className="mt-2 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-900 shadow-sm focus:border-[#7C5CFC] focus:outline-none dark:border-[#2A2740] dark:bg-[#0D0B1A] dark:text-white"
+                    >
                       <option value="">Select network</option>
                       <option value="Vodacom">Vodacom</option>
                       <option value="MTN">MTN</option>
                       <option value="Cell C">Cell C</option>
-                      <option value="Telkom Mobile">Telkom Mobile</option>
+                      <option value="Telkom Mobile">
+                        Telkom Mobile
+                      </option>
                     </select>
                   </div>
-                  <div className="flex gap-2 pt-2">
-                    <button onClick={() => { setShowAddContactForm(false); setNewContactNumber(''); setNewContactName(''); setNewContactNetwork(''); }} className="flex-1 rounded-full border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-100">Cancel</button>
-                    <button onClick={handleSaveContact} disabled={!newContactName || !newContactNumber || !newContactNetwork} className="flex-1 rounded-full bg-rose-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:bg-rose-300">Save Contact</button>
+
+                  <div className="flex flex-col gap-2 pt-2 sm:flex-row">
+                    <button
+                      onClick={() => {
+                        setShowAddContactForm(false);
+                        setNewContactNumber('');
+                        setNewContactName('');
+                        setNewContactNetwork('');
+                      }}
+                      className="flex-1 rounded-full border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-100 dark:border-[#2A2740] dark:bg-[#0D0B1A] dark:text-gray-300 dark:hover:bg-[#2A2740]"
+                    >
+                      Cancel
+                    </button>
+
+                    <button
+                      onClick={handleSaveContact}
+                      disabled={
+                        !newContactName ||
+                        !newContactNumber ||
+                        !newContactNetwork
+                      }
+                      className="flex-1 rounded-full bg-[#7C5CFC] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#6A4CE0] disabled:cursor-not-allowed disabled:bg-[#7C5CFC]/30"
+                    >
+                      Save Contact
+                    </button>
                   </div>
                 </div>
               )}
 
+              {/* Contacts */}
               {contacts.length > 0 ? (
                 <div>
-                  <p className="text-sm font-semibold text-slate-950 mb-3">Your Contacts ({contacts.length})</p>
+                  <p className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
+                    Your Contacts ({contacts.length})
+                  </p>
+
                   <div className="space-y-2">
                     {contacts.map((contact) => (
                       <div key={contact.id}>
-                        <div className={`flex items-center justify-between p-3 rounded-xl border transition cursor-pointer ${selectedContactForBuy === contact.id ? 'border-rose-500 bg-rose-50' : 'border-slate-200 hover:border-rose-300 hover:bg-rose-50'}`}>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-slate-950">{contact.name}</p>
-                            <div className="flex gap-2 mt-1">
-                              <p className="text-xs text-slate-600">{contact.number}</p>
-                              <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">{contact.network}</span>
+                        {/* Contact Card */}
+                        <div
+                          className={`flex cursor-pointer items-center justify-between gap-3 rounded-xl border p-3 transition ${
+                            selectedContactForBuy === contact.id
+                              ? 'border-[#7C5CFC] bg-[#7C5CFC]/10'
+                              : 'border-gray-200 bg-white hover:border-[#7C5CFC]/50 hover:bg-[#7C5CFC]/5 dark:border-[#2A2740] dark:bg-[#1A1830]'
+                          }`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-gray-900 dark:text-white">
+                              {contact.name}
+                            </p>
+
+                            <div className="mt-1 flex flex-wrap items-center gap-2">
+                              <p className="text-xs text-gray-600 dark:text-gray-400">
+                                {contact.number}
+                              </p>
+
+                              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700 dark:bg-[#0D0B1A] dark:text-gray-300">
+                                {contact.network}
+                              </span>
                             </div>
                           </div>
-                          <button onClick={() => handleBuyAirtime(contact.id)} className="ml-3 text-2xl text-rose-500 hover:text-rose-600 font-light">&gt;</button>
+
+                          <button
+                            onClick={() =>
+                              handleBuyAirtime(contact.id)
+                            }
+                            className="ml-2 shrink-0 text-2xl font-light text-[#6D4AFF] transition hover:text-[#7C5CFC] dark:text-[#B39DFF] dark:hover:text-white"
+                          >
+                            &gt;
+                          </button>
                         </div>
 
+                        {/* Purchase Options */}
                         {selectedContactForBuy === contact.id && (
-                          <div className="mt-2 p-4 rounded-xl border border-rose-200 bg-rose-50 space-y-3">
+                          <div className="mt-2 space-y-3 rounded-xl border border-[#7C5CFC]/30 bg-[#7C5CFC]/5 p-4">
                             <div>
-                              <label className="text-xs font-medium text-slate-700">Select Account</label>
-                              <select value={buyAccount} onChange={(e) => setBuyAccount(e.target.value)} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 shadow-sm focus:border-rose-500 focus:outline-none">
-                                <option value="">Choose account</option>
-                                <option value="Family Balance">Family Balance (R{parentData.familyBalance.toFixed(2)})</option>
-                                <option value="Savings">Savings (R{parentData.savings.toFixed(2)})</option>
+                              <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                Select Account
+                              </label>
+
+                              <select
+                                value={buyAccount}
+                                onChange={(e) =>
+                                  setBuyAccount(e.target.value)
+                                }
+                                className="mt-2 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-900 shadow-sm focus:border-[#7C5CFC] focus:outline-none dark:border-[#2A2740] dark:bg-[#0D0B1A] dark:text-white"
+                              >
+                                <option value="">
+                                  Choose account
+                                </option>
+
+                                <option value="Family Balance">
+                                  Family Balance (R
+                                  {parentData.familyBalance.toFixed(2)})
+                                </option>
+
+                                <option value="Savings">
+                                  Savings (R
+                                  {parentData.savings.toFixed(2)})
+                                </option>
                               </select>
                             </div>
 
                             <div>
-                              <label className="text-xs font-medium text-slate-700">Product Type</label>
-                              <select value={buyProductType} onChange={(e) => { setBuyProductType(e.target.value); setAirtimeAmount(''); setSelectedDataBundle(''); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 shadow-sm focus:border-rose-500 focus:outline-none">
-                                <option value="">Choose product</option>
-                                <option value="Airtime">Airtime</option>
+                              <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                Product Type
+                              </label>
+
+                              <select
+                                value={buyProductType}
+                                onChange={(e) => {
+                                  setBuyProductType(e.target.value);
+                                  setAirtimeAmount('');
+                                  setSelectedDataBundle('');
+                                }}
+                                className="mt-2 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-900 shadow-sm focus:border-[#7C5CFC] focus:outline-none dark:border-[#2A2740] dark:bg-[#0D0B1A] dark:text-white"
+                              >
+                                <option value="">
+                                  Choose product
+                                </option>
+                                <option value="Airtime">
+                                  Airtime
+                                </option>
                                 <option value="Data">Data</option>
                               </select>
                             </div>
 
+                            {/* Airtime */}
                             {buyProductType === 'Airtime' && (
                               <div>
-                                <label className="text-xs font-medium text-slate-700">Airtime Amount</label>
-                                <input type="number" min="1" value={airtimeAmount} onChange={(e) => setAirtimeAmount(e.target.value)} placeholder="Enter airtime amount" className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 shadow-sm focus:border-rose-500 focus:outline-none" />
+                                <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                  Airtime Amount
+                                </label>
+
+                                <input
+                                  type="number"
+                                  min="1"
+                                  value={airtimeAmount}
+                                  onChange={(e) =>
+                                    setAirtimeAmount(e.target.value)
+                                  }
+                                  placeholder="Enter airtime amount"
+                                  className="mt-2 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-900 placeholder-gray-400 shadow-sm focus:border-[#7C5CFC] focus:outline-none dark:border-[#2A2740] dark:bg-[#0D0B1A] dark:text-white dark:placeholder-gray-500"
+                                />
                               </div>
                             )}
 
-                            {buyProductType === 'Data' && selectedContactForBuy && (
-                              <div>
-                                <label className="text-xs font-medium text-slate-700">Data Bundle</label>
-                                <select value={selectedDataBundle} onChange={(e) => setSelectedDataBundle(e.target.value)} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 shadow-sm focus:border-rose-500 focus:outline-none">
-                                  <option value="">Choose data bundle</option>
-                                  {dataBundlesByNetwork[contact.network]?.map((bundle) => (
-                                    <option key={bundle.id} value={bundle.id}>{bundle.label}</option>
-                                  ))}
-                                </select>
-                                {!dataBundlesByNetwork[contact.network] && (
-                                  <p className="mt-2 text-xs text-slate-500">No bundle options available for {contact.network}.</p>
-                                )}
-                              </div>
-                            )}
+                            {/* Data */}
+                            {buyProductType === 'Data' &&
+                              selectedContactForBuy && (
+                                <div>
+                                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                    Data Bundle
+                                  </label>
 
-                            <div className="flex gap-2 pt-2">
-                              <button onClick={() => { setSelectedContactForBuy(null); setBuyAccount(''); setBuyProductType(''); }} className="flex-1 rounded-full border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-100">Cancel</button>
-                              <button onClick={handleConfirmBuyAirtime} disabled={!buyAccount || !buyProductType || (buyProductType === 'Airtime' && (!airtimeAmount || Number(airtimeAmount) <= 0)) || (buyProductType === 'Data' && !selectedDataBundle)} className="flex-1 rounded-full bg-rose-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:bg-rose-300">Confirm</button>
+                                  <select
+                                    value={selectedDataBundle}
+                                    onChange={(e) =>
+                                      setSelectedDataBundle(
+                                        e.target.value
+                                      )
+                                    }
+                                    className="mt-2 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-900 shadow-sm focus:border-[#7C5CFC] focus:outline-none dark:border-[#2A2740] dark:bg-[#0D0B1A] dark:text-white"
+                                  >
+                                    <option value="">
+                                      Choose data bundle
+                                    </option>
+
+                                    {dataBundlesByNetwork[
+                                      contact.network
+                                    ]?.map((bundle) => (
+                                      <option
+                                        key={bundle.id}
+                                        value={bundle.id}
+                                      >
+                                        {bundle.label}
+                                      </option>
+                                    ))}
+                                  </select>
+
+                                  {!dataBundlesByNetwork[
+                                    contact.network
+                                  ] && (
+                                    <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+                                      No bundle options available for{' '}
+                                      {contact.network}.
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+
+                            <div className="flex flex-col gap-2 pt-2 sm:flex-row">
+                              <button
+                                onClick={() => {
+                                  setSelectedContactForBuy(null);
+                                  setBuyAccount('');
+                                  setBuyProductType('');
+                                }}
+                                className="flex-1 rounded-full border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-100 dark:border-[#2A2740] dark:bg-[#0D0B1A] dark:text-gray-300 dark:hover:bg-[#2A2740]"
+                              >
+                                Cancel
+                              </button>
+
+                              <button
+                                onClick={handleConfirmBuyAirtime}
+                                disabled={
+                                  !buyAccount ||
+                                  !buyProductType ||
+                                  (buyProductType === 'Airtime' &&
+                                    (!airtimeAmount ||
+                                      Number(airtimeAmount) <= 0)) ||
+                                  (buyProductType === 'Data' &&
+                                    !selectedDataBundle)
+                                }
+                                className="flex-1 rounded-full bg-[#7C5CFC] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#6A4CE0] disabled:cursor-not-allowed disabled:bg-[#7C5CFC]/30"
+                              >
+                                Confirm
+                              </button>
                             </div>
                           </div>
                         )}
@@ -200,27 +453,60 @@ export const DashboardAirtime: React.FC<DashboardAirtimeProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-6"><p className="text-sm text-slate-600">No contacts yet. Add your first contact to get started!</p></div>
+                <div className="py-6 text-center">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    No contacts yet. Add your first contact to get
+                    started!
+                  </p>
+                </div>
               )}
             </div>
           )}
 
+          {/* History Tab */}
           {airtimeTab === 'history' && (
-            <div className="px-6 py-6 max-h-[400px] overflow-y-auto">
+            <div className="max-h-[60vh] overflow-y-auto px-1 py-2 sm:px-2">
               {mockAirtimeHistory.length > 0 ? (
                 <div className="space-y-3">
                   {mockAirtimeHistory.map((transaction) => (
-                    <div key={transaction.id} className="flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2"><p className="text-sm font-medium text-slate-950">{transaction.number}</p><span className="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-700">{transaction.type}</span></div>
-                        <p className="text-xs text-slate-600 mt-1">{transaction.date}</p>
+                    <div
+                      key={transaction.id}
+                      className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white p-3 transition hover:bg-gray-50 dark:border-[#2A2740] dark:bg-[#1A1830] dark:hover:bg-[#211E38]"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {transaction.number}
+                          </p>
+
+                          <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700 dark:bg-[#0D0B1A] dark:text-gray-300">
+                            {transaction.type}
+                          </span>
+                        </div>
+
+                        <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                          {transaction.date}
+                        </p>
                       </div>
-                      <div className="text-right"><p className="text-sm font-semibold text-slate-950">R{transaction.amount.toFixed(2)}</p><p className="text-xs text-green-600">{transaction.status}</p></div>
+
+                      <div className="shrink-0 text-right">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                          R{transaction.amount.toFixed(2)}
+                        </p>
+
+                        <p className="text-xs text-[#16A34A] dark:text-[#4ADE80]">
+                          {transaction.status}
+                        </p>
+                      </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8"><p className="text-sm text-slate-600">No transaction history yet</p></div>
+                <div className="py-8 text-center">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    No transaction history yet
+                  </p>
+                </div>
               )}
             </div>
           )}
@@ -229,73 +515,135 @@ export const DashboardAirtime: React.FC<DashboardAirtimeProps> = ({
 
       {/* Airtime Confirmation Modal */}
       {showAirtimeConfirmation && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-rose-500 text-white px-6 py-4 flex items-center justify-between">
-              <h2 className="text-lg font-bold">Confirm Purchase Details</h2>
-              <button onClick={() => { setSelectedContactForBuy(null); }} className="text-white hover:bg-rose-600 rounded-full p-1">
-                <CloseIcon className="w-5 h-5" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-3xl border border-gray-200 bg-white shadow-2xl dark:border-[#2A2740] dark:bg-[#1A1830] transition-colors duration-200">
+            {/* Modal Header */}
+            <div className="sticky top-0 flex items-center justify-between bg-[#7C5CFC] px-6 py-4 text-white">
+              <h2 className="text-lg font-bold">
+                Confirm Purchase Details
+              </h2>
+
+              <button
+                onClick={() => {
+                  setSelectedContactForBuy(null);
+                }}
+                className="rounded-full p-1 text-white transition hover:bg-[#6A4CE0]"
+              >
+                <CloseIcon className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="space-y-4 p-6">
               {/* Disclaimer Banner */}
-              <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded">
-                <p className="text-xs font-semibold text-amber-900 mb-1">⚠️ IMPORTANT DISCLAIMER</p>
-                <p className="text-xs text-amber-800">Please verify all details carefully before confirming. Once confirmed, this transaction cannot be reversed. Make sure you entered the correct phone number.</p>
+              <div className="rounded border-l-4 border-[#F97316] bg-orange-50 p-4 dark:bg-[#3B1A16]">
+                <p className="mb-1 text-xs font-semibold text-[#EA580C] dark:text-[#F97316]">
+                  ⚠️ IMPORTANT DISCLAIMER
+                </p>
+
+                <p className="text-xs text-orange-700/80 dark:text-[#F97316]/80">
+                  Please verify all details carefully before confirming.
+                  Once confirmed, this transaction cannot be reversed.
+                  Make sure you entered the correct phone number.
+                </p>
               </div>
 
               {/* Purchase Details */}
-              <div className="space-y-3 bg-slate-50 p-4 rounded-xl">
+              <div className="space-y-3 rounded-xl bg-gray-50 p-4 dark:bg-[#0D0B1A]">
                 <div>
-                  <p className="text-xs font-medium text-slate-600">RECIPIENT</p>
-                  <p className="text-sm font-semibold text-slate-900">{contact?.name}</p>
-                  <p className="text-xs text-slate-600">{contact?.number}</p>
-                </div>
-
-                <div className="border-t border-slate-200 pt-3">
-                  <p className="text-xs font-medium text-slate-600">NETWORK</p>
-                  <p className="text-sm font-semibold text-slate-900">{contact?.network}</p>
-                </div>
-
-                <div className="border-t border-slate-200 pt-3">
-                  <p className="text-xs font-medium text-slate-600">PRODUCT TYPE</p>
-                  <p className="text-sm font-semibold text-slate-900">{buyProductType}</p>
-                </div>
-
-                <div className="border-t border-slate-200 pt-3">
-                  <p className="text-xs font-medium text-slate-600">
-                    {buyProductType === 'Airtime' ? 'AMOUNT' : 'DATA BUNDLE'}
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                    RECIPIENT
                   </p>
-                  <p className="text-sm font-semibold text-slate-900">
-                    {buyProductType === 'Airtime' ? `R${Number(airtimeAmount).toFixed(2)}` : bundleLabel}
+
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                    {contact?.name}
+                  </p>
+
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    {contact?.number}
                   </p>
                 </div>
 
-                <div className="border-t border-slate-200 pt-3">
-                  <p className="text-xs font-medium text-slate-600">PAYMENT FROM</p>
-                  <p className="text-sm font-semibold text-slate-900">{buyAccount}</p>
+                <div className="border-t border-gray-200 pt-3 dark:border-[#2A2740]">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                    NETWORK
+                  </p>
+
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                    {contact?.network}
+                  </p>
+                </div>
+
+                <div className="border-t border-gray-200 pt-3 dark:border-[#2A2740]">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                    PRODUCT TYPE
+                  </p>
+
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                    {buyProductType}
+                  </p>
+                </div>
+
+                <div className="border-t border-gray-200 pt-3 dark:border-[#2A2740]">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                    {buyProductType === 'Airtime'
+                      ? 'AMOUNT'
+                      : 'DATA BUNDLE'}
+                  </p>
+
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                    {buyProductType === 'Airtime'
+                      ? `R${Number(airtimeAmount).toFixed(2)}`
+                      : bundleLabel}
+                  </p>
+                </div>
+
+                <div className="border-t border-gray-200 pt-3 dark:border-[#2A2740]">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                    PAYMENT FROM
+                  </p>
+
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                    {buyAccount}
+                  </p>
                 </div>
               </div>
 
               {/* Verification Checkboxes */}
-              <div className="space-y-2 bg-blue-50 p-4 rounded-xl">
+              <div className="space-y-2 rounded-xl border border-cyan-200 bg-cyan-50 p-4 dark:border-[#3ED9C2]/30 dark:bg-[#151F35]">
                 <div className="flex items-start gap-2">
-                  <input type="checkbox" id="verify-number" className="mt-1 h-4 w-4 rounded text-blue-600" />
-                  <label htmlFor="verify-number" className="text-xs text-slate-700">
+                  <input
+                    type="checkbox"
+                    id="verify-number"
+                    className="mt-1 h-4 w-4 rounded text-[#7C5CFC]"
+                  />
+
+                  <label
+                    htmlFor="verify-number"
+                    className="text-xs text-gray-700 dark:text-gray-300"
+                  >
                     I have verified the phone number is correct
                   </label>
                 </div>
+
                 <div className="flex items-start gap-2">
-                  <input type="checkbox" id="verify-amount" className="mt-1 h-4 w-4 rounded text-blue-600" />
-                  <label htmlFor="verify-amount" className="text-xs text-slate-700">
-                    I have confirmed the amount/bundle is what I want to purchase
+                  <input
+                    type="checkbox"
+                    id="verify-amount"
+                    className="mt-1 h-4 w-4 rounded text-[#7C5CFC]"
+                  />
+
+                  <label
+                    htmlFor="verify-amount"
+                    className="text-xs text-gray-700 dark:text-gray-300"
+                  >
+                    I have confirmed the amount/bundle is what I want
+                    to purchase
                   </label>
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-2 pt-4">
+              <div className="flex flex-col gap-2 pt-4 sm:flex-row">
                 <button
                   onClick={() => {
                     setSelectedContactForBuy(null);
@@ -304,13 +652,14 @@ export const DashboardAirtime: React.FC<DashboardAirtimeProps> = ({
                     setAirtimeAmount('');
                     setSelectedDataBundle('');
                   }}
-                  className="flex-1 rounded-full border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                  className="flex-1 rounded-full border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 dark:border-[#2A2740] dark:bg-[#0D0B1A] dark:text-gray-300 dark:hover:bg-[#2A2740]"
                 >
                   Cancel
                 </button>
+
                 <button
                   onClick={handleAirtimePurchaseConfirmed}
-                  className="flex-1 rounded-full bg-rose-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-600"
+                  className="flex-1 rounded-full bg-[#7C5CFC] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#6A4CE0]"
                 >
                   Confirm & Pay
                 </button>

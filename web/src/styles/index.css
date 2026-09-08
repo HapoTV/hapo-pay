@@ -1,34 +1,156 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
+ 
+/* ============================================
+   HapoPay Theme Variables — Dark (default) & Light
+   The [data-theme] attribute is set on the dashboard's
+   root wrapper div and cascades down to every component.
+   ============================================ */
+:root {
+  --color-bg: #0D0B1A;
+  --color-surface: #1A1830;
+  --color-surface-hover: #242038;
+  --color-border: #2A2740;
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #9CA3AF;
+  --color-text-tertiary: #6B7280;
+  --color-primary: #7C5CFC;
+  --color-primary-hover: #6A4CE0;
+  --color-primary-text: #B39DFF;
+  --color-primary-soft: rgba(124, 92, 252, 0.15);
+  --color-primary-soft-strong: rgba(124, 92, 252, 0.25);
+  --color-secondary: #3ED9C2;
+  --color-secondary-soft: rgba(62, 217, 194, 0.15);
+  --color-success: #22C55E;
+  --color-success-soft: rgba(34, 197, 94, 0.15);
+  --color-success-text: #4ADE80;
+  --color-warning: #F97316;
+  --color-warning-bg: #3B1A16;
+  --color-danger-text: #F87171;
+  --color-danger-solid: #DC2626;
+  --color-danger-solid-hover: #B91C1C;
+}
+ 
+[data-theme='light'] {
+  --color-bg: #F1F5F9;
+  --color-surface: #FFFFFF;
+  --color-surface-hover: #F1F5F9;
+  --color-border: #E2E8F0;
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #64748B;
+  --color-text-tertiary: #94A3B8;
+  --color-primary: #7C5CFC;
+  --color-primary-hover: #6A4CE0;
+  --color-primary-text: #6D28D9;
+  --color-primary-soft: rgba(124, 92, 252, 0.10);
+  --color-primary-soft-strong: rgba(124, 92, 252, 0.16);
+  --color-secondary: #0D9488;
+  --color-secondary-soft: rgba(13, 148, 136, 0.10);
+  --color-success: #16A34A;
+  --color-success-soft: rgba(22, 163, 74, 0.12);
+  --color-success-text: #15803D;
+  --color-warning: #EA580C;
+  --color-warning-bg: #FFF7ED;
+  --color-danger-text: #DC2626;
+  --color-danger-solid: #DC2626;
+  --color-danger-solid-hover: #B91C1C;
+}
+ 
 @layer base {
   body {
-    @apply bg-gray-50 text-gray-900 font-sans;
+    @apply font-sans;
+    background-color: var(--color-bg);
+    color: var(--color-text-primary);
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 }
-
+ 
 /* Always-visible thin scrollbar for modal content where supported */
 .always-scrollbar {
   scrollbar-width: thin; /* Firefox */
   scrollbar-color: rgba(148,163,184,0.6) rgba(241,245,249,1);
 }
-
+ 
 .always-scrollbar::-webkit-scrollbar {
   width: 8px;
 }
-
+ 
 .always-scrollbar::-webkit-scrollbar-track {
   background: rgba(241,245,249,1);
   border-radius: 9999px;
 }
-
+ 
 .always-scrollbar::-webkit-scrollbar-thumb {
   background: rgba(148,163,184,0.6);
   border-radius: 9999px;
   border: 2px solid rgba(241,245,249,1);
 }
-
+ 
 .always-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(148,163,184,0.8);
 }
+ 
+/* ============================================================
+   LIGHT MODE REPAINT — global class overrides
+   ------------------------------------------------------------
+   Specificity is boosted by repeating the attribute selector
+   (valid CSS3 — repeated simple selectors on the same element
+   each add to specificity). This guarantees these rules beat
+   plain Tailwind utility classes even if your project sets
+   `important: true` in tailwind.config.js.
+   ============================================================ */
+ 
+[data-theme='light'][data-theme='light'][data-theme='light'] {
+ 
+  /* ---- Neutral surfaces: page bg, cards, borders ---- */
+  .bg-\[\#0D0B1A\]                 { background-color: #F1F5F9 !important; }
+  .bg-\[\#1A1830\]                 { background-color: #FFFFFF !important; }
+  .border-\[\#2A2740\]             { border-color: #E2E8F0 !important; }
+  .hover\:bg-\[\#1A1830\]:hover    { background-color: #F8FAFC !important; }
+  .hover\:bg-\[\#2A2740\]:hover    { background-color: #E2E8F0 !important; }
+ 
+  /* ---- Dark tinted alert/status backgrounds -> pale tints ---- */
+  .bg-\[\#3B1A16\]                 { background-color: #FFF7ED !important; }
+  .bg-\[\#14291F\]                 { background-color: #F0FDF4 !important; }
+  .bg-\[\#151F35\]                 { background-color: #EFF6FF !important; }
+ 
+  /* ---- Pastel accent text (chosen for dark bg) -> darker, readable on white ---- */
+  .text-\[\#B39DFF\]               { color: #6D28D9 !important; }
+  .text-\[\#4ADE80\]               { color: #15803D !important; }
+  .text-\[\#7DD3FC\]               { color: #2563EB !important; }
+  .text-\[\#F87171\]               { color: #DC2626 !important; }
+  .hover\:text-\[\#F87171\]:hover  { color: #DC2626 !important; }
+  .text-\[\#3ED9C2\]               { color: #0D9488 !important; }
+  .text-\[\#F97316\]\/80           { color: #C2410C !important; }
+  .text-\[\#F97316\]\/90           { color: #C2410C !important; }
+ 
+  /* ---- Generic gray/placeholder text -> light-mode gray scale ---- */
+  .text-white                      { color: #0F172A !important; }
+  .text-gray-300                   { color: #334155 !important; }
+  .text-gray-400                   { color: #64748B !important; }
+  .text-gray-500                   { color: #94A3B8 !important; }
+  .text-gray-600                   { color: #94A3B8 !important; }
+  .placeholder-gray-500::placeholder { color: #94A3B8 !important; }
+  .border-gray-500                 { border-color: #CBD5E1 !important; }
+  .border-gray-600                 { border-color: #CBD5E1 !important; }
+  .hover\:text-white:hover         { color: #0F172A !important; }
+}
+ 
+/* ---- PROTECTION 1: text-white on/inside gradient elements stays white ---- */
+[data-theme='light'][data-theme='light'][data-theme='light'] [style*="linear-gradient"].text-white,
+[data-theme='light'][data-theme='light'][data-theme='light'] [style*="linear-gradient"] .text-white,
+[data-theme='light'][data-theme='light'][data-theme='light'] [style*="linear-gradient"] .text-white\/80 {
+  color: #ffffff !important;
+}
+ 
+/* ---- PROTECTION 2: text-white on solid colored buttons stays white ---- */
+[data-theme='light'][data-theme='light'][data-theme='light'] .bg-\[\#7C5CFC\].text-white,
+[data-theme='light'][data-theme='light'][data-theme='light'] .bg-\[\#6A4CE0\].text-white,
+[data-theme='light'][data-theme='light'][data-theme='light'] .bg-\[\#DC2626\].text-white,
+[data-theme='light'][data-theme='light'][data-theme='light'] .bg-\[\#B91C1C\].text-white,
+[data-theme='light'][data-theme='light'][data-theme='light'] .bg-\[\#F97316\].text-white,
+[data-theme='light'][data-theme='light'][data-theme='light'] .bg-\[\#22C55E\].text-white {
+  color: #ffffff !important;
+}
+ 

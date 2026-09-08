@@ -6,12 +6,17 @@ interface WalletReportModalProps {
   onClose: () => void;
 }
 
-export const WalletReportModal: React.FC<WalletReportModalProps> = ({ open, onClose }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'patterns' | 'category' | 'safety'>('overview');
-
-  if (!open) return null;
+export const WalletReportModal: React.FC<WalletReportModalProps> = ({
+  open,
+  onClose,
+}) => {
+  const [activeTab, setActiveTab] = useState<
+    'overview' | 'patterns' | 'category' | 'safety'
+  >('overview');
 
   const contentRef = useRef<HTMLDivElement | null>(null);
+
+  if (!open) return null;
 
   const exportReport = async () => {
     if (!contentRef.current) return;
@@ -27,65 +32,172 @@ export const WalletReportModal: React.FC<WalletReportModalProps> = ({ open, onCl
     const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
     pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`wallet-report-${new Date().toISOString().slice(0,10)}.pdf`);
+    pdf.save(
+      `wallet-report-${new Date().toISOString().slice(0, 10)}.pdf`
+    );
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-6" onClick={onClose}>
-      <div className="w-full max-w-xl rounded-2xl bg-white shadow-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-xl rounded-2xl bg-white dark:bg-[#1A1830] border border-gray-200 dark:border-[#2A2740] shadow-xl overflow-hidden transition-colors duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Modal Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-[#2A2740]">
           <div>
-            <h2 className="text-xl font-semibold text-slate-950">Smart Transaction Reports</h2>
-            <p className="text-sm text-slate-500">Overview</p>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              Smart Transaction Reports
+            </h2>
+
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Overview
+            </p>
           </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-900">✕</button>
+
+          <button
+            onClick={onClose}
+            className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+            aria-label="Close report"
+          >
+            ✕
+          </button>
         </div>
 
+        {/* Tabs */}
         <div className="px-5 py-3">
-          <div className="flex gap-3 mb-4">
-            <button onClick={() => setActiveTab('overview')} className={`px-3 py-2 rounded-md text-sm ${activeTab === 'overview' ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-700'}`}>Overview</button>
-            <button onClick={() => setActiveTab('patterns')} className={`px-3 py-2 rounded-md text-sm ${activeTab === 'patterns' ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-700'}`}>Spending Patterns</button>
-            <button onClick={() => setActiveTab('category')} className={`px-3 py-2 rounded-md text-sm ${activeTab === 'category' ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-700'}`}>Category Breakdown</button>
-            <button onClick={() => setActiveTab('safety')} className={`px-3 py-2 rounded-md text-sm ${activeTab === 'safety' ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-700'}`}>Safety Alerts</button>
+          <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`whitespace-nowrap px-3 py-2 rounded-md text-sm transition ${
+                activeTab === 'overview'
+                  ? 'bg-[#7C5CFC] text-white'
+                  : 'bg-gray-100 dark:bg-[#0D0B1A] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#24213A]'
+              }`}
+            >
+              Overview
+            </button>
+
+            <button
+              onClick={() => setActiveTab('patterns')}
+              className={`whitespace-nowrap px-3 py-2 rounded-md text-sm transition ${
+                activeTab === 'patterns'
+                  ? 'bg-[#7C5CFC] text-white'
+                  : 'bg-gray-100 dark:bg-[#0D0B1A] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#24213A]'
+              }`}
+            >
+              Spending Patterns
+            </button>
+
+            <button
+              onClick={() => setActiveTab('category')}
+              className={`whitespace-nowrap px-3 py-2 rounded-md text-sm transition ${
+                activeTab === 'category'
+                  ? 'bg-[#7C5CFC] text-white'
+                  : 'bg-gray-100 dark:bg-[#0D0B1A] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#24213A]'
+              }`}
+            >
+              Category Breakdown
+            </button>
+
+            <button
+              onClick={() => setActiveTab('safety')}
+              className={`whitespace-nowrap px-3 py-2 rounded-md text-sm transition ${
+                activeTab === 'safety'
+                  ? 'bg-[#7C5CFC] text-white'
+                  : 'bg-gray-100 dark:bg-[#0D0B1A] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#24213A]'
+              }`}
+            >
+              Safety Alerts
+            </button>
           </div>
 
-          <div className="max-h-[55vh] overflow-y-auto" ref={contentRef}>
+          {/* Report Content */}
+          <div
+            className="max-h-[55vh] overflow-y-auto"
+            ref={contentRef}
+          >
+            {/* Overview */}
             {activeTab === 'overview' && (
               <div>
                 <div className="grid gap-3 grid-cols-1 sm:grid-cols-3 mb-3">
-                  <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+
+                  {/* Total Spending */}
+                  <div className="rounded-2xl border border-gray-200 dark:border-[#2A2740] bg-gray-50 dark:bg-[#0D0B1A] p-3 shadow-sm">
                     <div className="flex items-start gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-500 text-white">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#7C5CFC] text-white">
                         <Gift size={18} />
                       </div>
+
                       <div>
-                        <p className="text-xs text-slate-500">Total Spending</p>
-                        <p className="text-base font-semibold text-slate-900">R0.00</p>
-                        <p className="text-xs text-rose-500">+12% from last month</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                          Total Spending
+                        </p>
+
+                        <p className="text-base font-semibold text-gray-900 dark:text-white">
+                          R0.00
+                        </p>
+
+                        <p className="text-xs text-[#6D4AFF] dark:text-[#B39DFF]">
+                          +12% from last month
+                        </p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-                    <p className="text-xs text-slate-500">Total Transactions</p>
-                    <p className="text-base font-semibold text-slate-900">0</p>
-                    <p className="text-xs text-red-500">-8% from last month</p>
+                  {/* Total Transactions */}
+                  <div className="rounded-2xl border border-gray-200 dark:border-[#2A2740] bg-gray-50 dark:bg-[#0D0B1A] p-3 shadow-sm">
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      Total Transactions
+                    </p>
+
+                    <p className="text-base font-semibold text-gray-900 dark:text-white">
+                      0
+                    </p>
+
+                    <p className="text-xs text-red-600 dark:text-[#F87171]">
+                      -8% from last month
+                    </p>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-                    <p className="text-xs text-slate-500">Average Transaction</p>
-                    <p className="text-base font-semibold text-slate-900">R0.00</p>
-                    <p className="text-xs text-red-500">-3% from last month</p>
+                  {/* Average Transaction */}
+                  <div className="rounded-2xl border border-gray-200 dark:border-[#2A2740] bg-gray-50 dark:bg-[#0D0B1A] p-3 shadow-sm">
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      Average Transaction
+                    </p>
+
+                    <p className="text-base font-semibold text-gray-900 dark:text-white">
+                      R0.00
+                    </p>
+
+                    <p className="text-xs text-red-600 dark:text-[#F87171]">
+                      -3% from last month
+                    </p>
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-                  <p className="text-sm font-semibold text-slate-900 mb-2">Monthly Spending Trend</p>
+                {/* Monthly Spending Trend */}
+                <div className="rounded-2xl border border-gray-200 dark:border-[#2A2740] bg-gray-50 dark:bg-[#0D0B1A] p-3 shadow-sm">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                    Monthly Spending Trend
+                  </p>
+
                   <div className="flex items-end gap-3 h-28">
-                    {['Jan','Feb','Mar','Apr','May'].map((m, idx) => (
+                    {['Jan', 'Feb', 'Mar', 'Apr', 'May'].map((m, idx) => (
                       <div key={m} className="flex-1">
-                        <div className="mx-auto bg-rose-500 w-full rounded-t-md" style={{height: `${(idx+4)*8}px`}} />
-                        <p className="text-xs text-slate-500 text-center mt-2">{m}</p>
+                        <div
+                          className="mx-auto bg-[#7C5CFC] w-full rounded-t-md"
+                          style={{
+                            height: `${(idx + 4) * 8}px`,
+                          }}
+                        />
+
+                        <p className="text-xs text-gray-600 dark:text-gray-400 text-center mt-2">
+                          {m}
+                        </p>
                       </div>
                     ))}
                   </div>
@@ -93,82 +205,169 @@ export const WalletReportModal: React.FC<WalletReportModalProps> = ({ open, onCl
               </div>
             )}
 
+            {/* Spending Patterns */}
             {activeTab === 'patterns' && (
               <div>
-                <p className="text-sm font-semibold text-slate-900 mb-4">Spending Pattern Analysis</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white mb-4">
+                  Spending Pattern Analysis
+                </p>
+
                 <div className="space-y-4 mb-4">
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm flex items-start gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-500 text-white">🕒</div>
+
+                  {/* Peak Spending Hours */}
+                  <div className="rounded-2xl border border-gray-200 dark:border-[#2A2740] bg-gray-50 dark:bg-[#0D0B1A] p-4 shadow-sm flex items-start gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#7C5CFC] text-white">
+                      🕒
+                    </div>
+
                     <div>
-                      <p className="font-semibold text-slate-900">Peak Spending Hours</p>
-                      <p className="text-sm text-slate-500">Most transactions occur between 12:00 PM - 2:00 PM (lunch time)</p>
-                      <p className="text-xs text-sky-500 mt-2">68% of daily transactions</p>
+                      <p className="font-semibold text-gray-900 dark:text-white">
+                        Peak Spending Hours
+                      </p>
+
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Most transactions occur between 12:00 PM - 2:00 PM
+                        (lunch time)
+                      </p>
+
+                      <p className="text-xs text-[#0F9F8A] dark:text-[#3ED9C2] mt-2">
+                        68% of daily transactions
+                      </p>
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm flex items-start gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500 text-white">📍</div>
+                  {/* Common Locations */}
+                  <div className="rounded-2xl border border-gray-200 dark:border-[#2A2740] bg-gray-50 dark:bg-[#0D0B1A] p-4 shadow-sm flex items-start gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#22C55E] text-white">
+                      📍
+                    </div>
+
                     <div>
-                      <p className="font-semibold text-slate-900">Common Locations</p>
-                      <p className="text-sm text-slate-500">School cafeteria and nearby convenience stores</p>
-                      <p className="text-xs text-sky-500 mt-2">85% of all transactions</p>
+                      <p className="font-semibold text-gray-900 dark:text-white">
+                        Common Locations
+                      </p>
+
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        School cafeteria and nearby convenience stores
+                      </p>
+
+                      <p className="text-xs text-[#0F9F8A] dark:text-[#3ED9C2] mt-2">
+                        85% of all transactions
+                      </p>
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm flex items-start gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-500 text-white">📅</div>
+                  {/* Spending Frequency */}
+                  <div className="rounded-2xl border border-gray-200 dark:border-[#2A2740] bg-gray-50 dark:bg-[#0D0B1A] p-4 shadow-sm flex items-start gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#F97316] text-white">
+                      📅
+                    </div>
+
                     <div>
-                      <p className="font-semibold text-slate-900">Spending Frequency</p>
-                      <p className="text-sm text-slate-500">Regular daily spending with weekend increases</p>
-                      <p className="text-xs text-sky-500 mt-2">2.3 transactions/day average</p>
+                      <p className="font-semibold text-gray-900 dark:text-white">
+                        Spending Frequency
+                      </p>
+
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Regular daily spending with weekend increases
+                      </p>
+
+                      <p className="text-xs text-[#0F9F8A] dark:text-[#3ED9C2] mt-2">
+                        2.3 transactions/day average
+                      </p>
                     </div>
                   </div>
                 </div>
 
-                <p className="text-sm font-semibold text-slate-900 mb-2">Weekly Spending Pattern</p>
-                <div className="rounded-2xl border border-slate-200 bg-white p-8 h-36" />
+                <p className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                  Weekly Spending Pattern
+                </p>
+
+                <div className="rounded-2xl border border-gray-200 dark:border-[#2A2740] bg-gray-50 dark:bg-[#0D0B1A] p-8 h-36" />
               </div>
             )}
 
+            {/* Category Breakdown */}
             {activeTab === 'category' && (
               <div>
-                <p className="text-sm font-semibold text-slate-900 mb-3">Spending by Category</p>
-                <p className="text-xs text-slate-500 mb-3">Spending Insights</p>
-                <div className="rounded-2xl border border-slate-200 bg-white p-4 h-20" />
+                <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                  Spending by Category
+                </p>
+
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                  Spending Insights
+                </p>
+
+                <div className="rounded-2xl border border-gray-200 dark:border-[#2A2740] bg-gray-50 dark:bg-[#0D0B1A] p-4 h-20" />
               </div>
             )}
 
+            {/* Safety Alerts */}
             {activeTab === 'safety' && (
               <div>
-                <p className="text-sm font-semibold text-slate-900 mb-3">Safety Alerts & Notifications</p>
-                <div className="rounded-lg bg-emerald-50 border border-emerald-100 p-3 mb-4">
-                  <p className="text-emerald-700">✔️ All spending patterns are normal</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                  Safety Alerts & Notifications
+                </p>
+
+                {/* Normal Spending Alert */}
+                <div className="rounded-lg bg-green-50 dark:bg-[#14291F] border border-green-200 dark:border-[#22C55E]/30 p-3 mb-4">
+                  <p className="text-green-700 dark:text-[#4ADE80]">
+                    ✔️ All spending patterns are normal
+                  </p>
                 </div>
 
-                <p className="text-sm font-semibold text-slate-900 mb-2">Recent Safety Events</p>
-                <p className="text-sm text-slate-600 mb-3">Unusual Spending Detection</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                  Recent Safety Events
+                </p>
+
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                  Unusual Spending Detection
+                </p>
 
                 <div className="space-y-2">
-                  <div className="rounded-2xl border border-slate-200 bg-white p-3 flex items-center justify-between">
-                    <div>Out-of-hours spending alerts</div>
-                    <div className="text-xs text-emerald-600 bg-emerald-100 px-2 py-1 rounded-full">Enabled</div>
-                  </div>
 
-                  <div className="rounded-2xl border border-slate-200 bg-white p-3 flex items-center justify-between">
-                    <div>Unknown location alerts</div>
-                    <div className="text-xs text-emerald-600 bg-emerald-100 px-2 py-1 rounded-full">Enabled</div>
-                  </div>
+                  {/* Out-of-hours */}
+                  <div className="rounded-2xl border border-gray-200 dark:border-[#2A2740] bg-gray-50 dark:bg-[#0D0B1A] p-3 flex items-center justify-between gap-3">
+                    <div className="text-gray-700 dark:text-gray-300">
+                      Out-of-hours spending alerts
+                    </div>
 
-                  <div className="rounded-2xl border border-slate-200 bg-white p-3 flex items-center justify-between">
-                    <div>Large transaction alerts</div>
-                    <div className="flex items-center gap-2">
-                      <div className="text-xs text-emerald-600 bg-emerald-100 px-2 py-1 rounded-full">Enabled (&gt; 25.00)</div>
+                    <div className="text-xs text-green-700 dark:text-[#4ADE80] bg-green-100 dark:bg-[#22C55E]/15 px-2 py-1 rounded-full whitespace-nowrap">
+                      Enabled
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-200 bg-white p-3 flex items-center justify-between">
-                    <div>Spending pattern changes</div>
-                    <div className="text-xs text-emerald-600 bg-emerald-100 px-2 py-1 rounded-full">Enabled</div>
+                  {/* Unknown Location */}
+                  <div className="rounded-2xl border border-gray-200 dark:border-[#2A2740] bg-gray-50 dark:bg-[#0D0B1A] p-3 flex items-center justify-between gap-3">
+                    <div className="text-gray-700 dark:text-gray-300">
+                      Unknown location alerts
+                    </div>
+
+                    <div className="text-xs text-green-700 dark:text-[#4ADE80] bg-green-100 dark:bg-[#22C55E]/15 px-2 py-1 rounded-full whitespace-nowrap">
+                      Enabled
+                    </div>
+                  </div>
+
+                  {/* Large Transaction */}
+                  <div className="rounded-2xl border border-gray-200 dark:border-[#2A2740] bg-gray-50 dark:bg-[#0D0B1A] p-3 flex items-center justify-between gap-3">
+                    <div className="text-gray-700 dark:text-gray-300">
+                      Large transaction alerts
+                    </div>
+
+                    <div className="text-xs text-green-700 dark:text-[#4ADE80] bg-green-100 dark:bg-[#22C55E]/15 px-2 py-1 rounded-full whitespace-nowrap">
+                      Enabled (&gt; 25.00)
+                    </div>
+                  </div>
+
+                  {/* Spending Pattern Changes */}
+                  <div className="rounded-2xl border border-gray-200 dark:border-[#2A2740] bg-gray-50 dark:bg-[#0D0B1A] p-3 flex items-center justify-between gap-3">
+                    <div className="text-gray-700 dark:text-gray-300">
+                      Spending pattern changes
+                    </div>
+
+                    <div className="text-xs text-green-700 dark:text-[#4ADE80] bg-green-100 dark:bg-[#22C55E]/15 px-2 py-1 rounded-full whitespace-nowrap">
+                      Enabled
+                    </div>
                   </div>
                 </div>
               </div>
@@ -176,11 +375,26 @@ export const WalletReportModal: React.FC<WalletReportModalProps> = ({ open, onCl
           </div>
         </div>
 
-        <div className="px-5 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
-          <div className="text-sm text-slate-600">&nbsp;</div>
+        {/* Modal Footer */}
+        <div className="px-5 py-3 border-t border-gray-200 dark:border-[#2A2740] bg-gray-50 dark:bg-[#0D0B1A] flex items-center justify-between">
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            &nbsp;
+          </div>
+
           <div className="flex gap-3">
-            <button onClick={exportReport} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Export Report</button>
-            <button onClick={onClose} className="inline-flex items-center gap-2 rounded-full bg-rose-500 px-3 py-2 text-sm font-semibold text-white hover:bg-rose-600">Close</button>
+            <button
+              onClick={exportReport}
+              className="inline-flex items-center gap-2 rounded-full border border-gray-200 dark:border-[#2A2740] bg-white dark:bg-[#1A1830] px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#2A2740] transition"
+            >
+              Export Report
+            </button>
+
+            <button
+              onClick={onClose}
+              className="inline-flex items-center gap-2 rounded-full bg-[#7C5CFC] px-3 py-2 text-sm font-semibold text-white hover:bg-[#6A4CE0] transition"
+            >
+              Close
+            </button>
           </div>
         </div>
       </div>

@@ -13,7 +13,10 @@ const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [theme, setThemeState] = useState<Theme>(() => {
         const stored = localStorage.getItem('hapo-theme');
-        return (stored as Theme) || 'dark';
+
+return stored === 'light' || stored === 'dark'
+    ? stored
+    : 'dark';
     });
 
     useEffect(() => {
