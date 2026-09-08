@@ -18,7 +18,10 @@ export const DashboardTopbar: React.FC<DashboardTopbarProps> = ({
   onLogout,
 }) => {
   return (
-    <nav className="sticky top-0 z-50 bg-gradient-to-r from-rose-500 to-purple-600 text-white px-6 py-4 shadow-lg">
+    <nav
+      className="sticky top-0 z-50 text-white px-6 py-4 shadow-lg"
+      style={{ background: 'linear-gradient(to right, #9333ea, #4f46e5)' }}
+    >
       <div className="flex items-center justify-between max-w-7xl mx-auto">
         <div className="flex items-center h-10 overflow-visible">
           <Logo className="h-14 w-14 -mt-2 object-contain" alt="HapoPay logo" />

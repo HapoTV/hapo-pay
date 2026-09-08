@@ -21,11 +21,10 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({ items }) => 
             <button
               key={item.id}
               onClick={item.onClick}
-              className={`w-full flex items-center gap-5 rounded-3xl px-4 py-4 text-left transition ${
-                item.isActive
-                  ? 'bg-rose-50 text-rose-500'
+              className={`w-full flex items-center gap-5 rounded-3xl px-4 py-4 text-left transition ${item.isActive
+                  ? 'bg-purple-50 text-purple-600'
                   : 'text-slate-600 hover:text-slate-950 hover:bg-slate-50'
-              }`}
+                }`}
             >
               <div className="w-7 h-7 text-current">
                 {item.icon}
