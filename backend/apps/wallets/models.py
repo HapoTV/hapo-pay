@@ -44,10 +44,6 @@ class Wallet(models.Model):
         self.balance -= amount
         self.save(update_fields=['balance', 'updated_at'])
         return True
-<<<<<<< HEAD
-        
-=======
->>>>>>> 33e04970 (fix: Resolve merge conflicts and fix import errors)
 
 
 class Transaction(models.Model):

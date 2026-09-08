@@ -70,9 +70,6 @@ class CreateMoneyRequestSerializer(serializers.Serializer):
 class ApproveMoneyRequestSerializer(serializers.Serializer):
     request_id = serializers.UUIDField()
     action = serializers.ChoiceField(choices=['approve', 'decline'])
-<<<<<<< HEAD
-    parent_notes = serializers.CharField(max_length=500, required=False)
-=======
     parent_notes = serializers.CharField(max_length=500, required=False)
 
 
@@ -99,4 +96,3 @@ class ChildSummarySerializer(serializers.ModelSerializer):
 
 class FreezeAccountSerializer(serializers.Serializer):
     freeze_reason = serializers.CharField(max_length=500)
->>>>>>> 33e04970 (fix: Resolve merge conflicts and fix import errors)

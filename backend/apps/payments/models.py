@@ -4,10 +4,7 @@ from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 import uuid
 
-<<<<<<< HEAD
-=======
 # Fraud choices constants
->>>>>>> 33e04970 (fix: Resolve merge conflicts and fix import errors)
 FRAUD_SEVERITY_CHOICES = [
     ('low', 'Low'),
     ('medium', 'Medium'),
@@ -33,11 +30,8 @@ FRAUD_ALERT_TYPE_CHOICES = [
     ('multiple_rules', 'Multiple Rules Triggered'),
     ('rapid_succession', 'Rapid Succession'),
 ]
-<<<<<<< HEAD
-=======
 
 
->>>>>>> 33e04970 (fix: Resolve merge conflicts and fix import errors)
 class Merchant(models.Model):
     CATEGORY_CHOICES = [
         ('retail', 'Retail'),
@@ -187,10 +181,6 @@ class TransportTicket(models.Model):
 
     def __str__(self):
         return f"{self.ticket_type} - {self.route} ({self.amount})"
-<<<<<<< HEAD
-
-=======
->>>>>>> 33e04970 (fix: Resolve merge conflicts and fix import errors)
 
 
 class FraudAlert(models.Model):
