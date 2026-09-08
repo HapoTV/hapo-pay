@@ -14,7 +14,7 @@ interface Props {
 }
 
 const StudentHome: React.FC<Props> = ({ studentData }) => {
-    const { name, balance, monthlySpending, currency } = studentData;
+    const { balance, monthlySpending, currency } = studentData;
 
     const [showQRModal, setShowQRModal] = useState(false);
     const [showRequestModal, setShowRequestModal] = useState(false);
