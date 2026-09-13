@@ -30,6 +30,7 @@ db.sqlite3
 db.sqlite3-journal
 media/
 staticfiles/
+/.venv/
 
 # ─── Node / React ──────────────────────────────────────────────────────────────
 node_modules/
@@ -81,3 +82,4 @@ secrets.json
 .DS_Store
 Thumbs.db
 desktop.ini
+
