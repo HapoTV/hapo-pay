@@ -30,34 +30,21 @@ class Wallet(models.Model):
         return f"{self.user.email} - {self.currency} {self.balance}"
 
     def add_balance(self, amount):
-        """Add amount to wallet balance.
-
-        Rejects non-positive amounts: a negative value here would silently
-        drain the wallet while the caller believes it credited it. Callers must
-        hold a row lock (select_for_update) on this wallet.
-        """
-        amount = Decimal(amount)
-        if amount <= Decimal('0'):
-            raise ValueError("Credit amount must be greater than zero")
+        """Credit Wallet. Use select_for_update() at the call site."""
+        if not self.is_active:
+            raise ValueError('Cannot credit an inactive Wallet.')
         self.balance += amount
         self.save(update_fields=['balance', 'updated_at'])
 
     def deduct_balance(self, amount):
-        """Deduct amount from wallet balance if sufficient.
-
-        Rejects non-positive amounts: a negative value would pass the
-        `balance >= amount` check and *increase* the balance, minting money.
-        Callers must hold a row lock (select_for_update) on this wallet and
-        must check the return value.
-        """
-        amount = Decimal(amount)
-        if amount <= Decimal('0'):
-            raise ValueError("Debit amount must be greater than zero")
-        if self.balance >= amount:
-            self.balance -= amount
-            self.save(update_fields=['balance', 'updated_at'])
-            return True
-        return False
+        """Debit wallet. Return True on Success, False if insufficient funds."""
+        if not self.is_active:
+            raise ValueError('Cannot debit an inactive Wallet.')
+        if self.balance < amount:
+            return False
+        self.balance -= amount
+        self.save(update_fields=['balance', 'updated_at'])
+        return True
 
 
 class Transaction(models.Model):
@@ -85,10 +72,12 @@ class Transaction(models.Model):
 
     STATUS_CHOICES = [
         ('pending', 'Pending'),
+        ('processing', 'Processing'),
         ('completed', 'Completed'),
         ('failed', 'Failed'),
         ('cancelled', 'Cancelled'),
         ('refunded', 'Refunded'),
+        ('frozen', 'Frozen'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -104,6 +93,8 @@ class Transaction(models.Model):
     metadata = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    is_flagged = models.BooleanField(default=False, db_index=True)
+    fraud_reasons = models.JSONField(default=list, blank=True)
 
     class Meta:
         db_table = 'transactions'

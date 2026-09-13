@@ -29,7 +29,9 @@
 - **Django as API layer** — handles business logic, validation, and auth (JWT via SimpleJWT). Supabase is the database.
 - **Supabase** — used for PostgreSQL, file storage, and real-time subscriptions. The Django backend connects via `DATABASE_URL`.
 - **React + Vite** — fast dev experience, TypeScript for safety, TailwindCSS for styling, React Query for server state.
-- **Flutter** — single codebase for iOS and Android, Riverpod for state, GoRouter for navigation.
+- **Flutter** — single codebase for iOS and Android, Riverpod for state, GoRouter for navigation. See the detailed [Flutter Mobile Architecture Guide](file:///c:/Users/admin/desktop/hapo-pay/mobile/docs/architecture.md) for more info on state management decisions, feature architectures, and gap analysis.
+
+
 
 ## API Endpoints
 
