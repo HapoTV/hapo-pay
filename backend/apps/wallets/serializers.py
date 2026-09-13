@@ -45,7 +45,15 @@ class MoneyRequestSerializer(serializers.ModelSerializer):
         model = MoneyRequest
         fields = ('id', 'child', 'child_name', 'parent', 'parent_name', 'amount',
                   'reason', 'status', 'parent_notes', 'created_at', 'responded_at')
-        read_only_fields = ('id', 'created_at', 'responded_at')
+        # MoneyRequestViewSet is a ModelViewSet, so PUT/PATCH on a request are
+        # routed straight into this serializer. With only id/created_at/
+        # responded_at read-only, a student could PATCH their own pending
+        # request to rewrite `amount`, flip `status` to 'approved', or
+        # re-point `child`/`parent` at other accounts. Money movement is owned
+        # by ApproveMoneyRequestView; everything that identifies or prices the
+        # request is now server-controlled.
+        read_only_fields = ('id', 'child', 'parent', 'amount', 'status',
+                            'parent_notes', 'created_at', 'responded_at')
 
 
 class TransferFundsSerializer(serializers.Serializer):

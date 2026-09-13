@@ -2,6 +2,7 @@
 from django.db import models
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
+from decimal import Decimal
 import uuid
 
 
@@ -29,15 +30,32 @@ class Wallet(models.Model):
         return f"{self.user.email} - {self.currency} {self.balance}"
 
     def add_balance(self, amount):
-        """Add amount to wallet balance"""
+        """Add amount to wallet balance.
+
+        Rejects non-positive amounts: a negative value here would silently
+        drain the wallet while the caller believes it credited it. Callers must
+        hold a row lock (select_for_update) on this wallet.
+        """
+        amount = Decimal(amount)
+        if amount <= Decimal('0'):
+            raise ValueError("Credit amount must be greater than zero")
         self.balance += amount
-        self.save()
+        self.save(update_fields=['balance', 'updated_at'])
 
     def deduct_balance(self, amount):
-        """Deduct amount from wallet balance if sufficient"""
+        """Deduct amount from wallet balance if sufficient.
+
+        Rejects non-positive amounts: a negative value would pass the
+        `balance >= amount` check and *increase* the balance, minting money.
+        Callers must hold a row lock (select_for_update) on this wallet and
+        must check the return value.
+        """
+        amount = Decimal(amount)
+        if amount <= Decimal('0'):
+            raise ValueError("Debit amount must be greater than zero")
         if self.balance >= amount:
             self.balance -= amount
-            self.save()
+            self.save(update_fields=['balance', 'updated_at'])
             return True
         return False
 

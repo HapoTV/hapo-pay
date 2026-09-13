@@ -2,10 +2,12 @@
 from rest_framework import viewsets, generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from django.db import transaction
 from django.utils import timezone
 from django.core.cache import cache
+from apps.accounts.models import User
 from .models import Wallet, Transaction, SpendingLimit, MoneyRequest
 from .serializers import (
     WalletSerializer, TransactionSerializer, SpendingLimitSerializer,
@@ -13,6 +15,7 @@ from .serializers import (
     CreateMoneyRequestSerializer, ApproveMoneyRequestSerializer
 )
 from core.permissions import IsParent, IsStudent, IsOwnAccount
+from core.utils import parse_date_param
 from core.supabase_client import supabase
 from apps.notifications.services import NotificationService
 from apps.gamification.services import PointCalculatorService
@@ -65,10 +68,19 @@ class TransactionViewSet(viewsets.ReadOnlyModelViewSet):
             queryset = queryset.filter(type=transaction_type)
         if category:
             queryset = queryset.filter(category=category)
-        if start_date:
-            queryset = queryset.filter(created_at__gte=start_date)
-        if end_date:
-            queryset = queryset.filter(created_at__lte=end_date)
+        # Validated before reaching the ORM: a malformed value (e.g.
+        # ?start_date=yesterday) previously raised ValidationError from the
+        # field lookup and returned HTTP 500 instead of 400.
+        try:
+            if start_date:
+                queryset = queryset.filter(created_at__gte=parse_date_param(start_date))
+            if end_date:
+                queryset = queryset.filter(created_at__lte=parse_date_param(end_date))
+        except ValueError as exc:
+            return Response({
+                'status': 'error',
+                'message': str(exc)
+            }, status=status.HTTP_400_BAD_REQUEST)
 
         page = self.paginate_queryset(queryset)
         if page is not None:
@@ -82,6 +94,8 @@ class TransactionViewSet(viewsets.ReadOnlyModelViewSet):
 class TransferFundsView(APIView):
     """Handle fund transfers between parent and child"""
     permission_classes = [IsAuthenticated, IsParent]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'payment'
 
     @transaction.atomic
     def post(self, request):
@@ -101,8 +115,12 @@ class TransferFundsView(APIView):
                 'message': 'Recipient not found'
             }, status=status.HTTP_404_NOT_FOUND)
 
-        # Check if recipient is a child of the parent
-        if recipient.role != 'student' or recipient.student_profile.parent_id != sender.id:
+        # Check if recipient is a child of the parent. getattr guards the
+        # reverse OneToOne: a recipient with no student_profile previously
+        # raised RelatedObjectDoesNotExist and returned a 500 instead of a 403.
+        student_profile = getattr(recipient, 'student_profile', None)
+        if (recipient.role != 'student' or student_profile is None
+                or student_profile.parent_id != sender.id):
             return Response({
                 'status': 'error',
                 'message': 'You can only transfer to your own children'
@@ -119,8 +137,14 @@ class TransferFundsView(APIView):
                 'message': 'Insufficient balance'
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        # Perform transfer
-        sender_wallet.deduct_balance(amount)
+        # Perform transfer. deduct_balance returns False when the balance is
+        # insufficient; ignoring it would credit the recipient without ever
+        # debiting the sender, creating money out of nothing.
+        if not sender_wallet.deduct_balance(amount):
+            return Response({
+                'status': 'error',
+                'message': 'Insufficient balance'
+            }, status=status.HTTP_400_BAD_REQUEST)
         recipient_wallet.add_balance(amount)
 
         # Create transaction records
@@ -265,6 +289,8 @@ class MoneyRequestViewSet(viewsets.ModelViewSet):
 class ApproveMoneyRequestView(APIView):
     """Approve or decline money requests"""
     permission_classes = [IsAuthenticated, IsParent]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'payment'
 
     @transaction.atomic
     def post(self, request):
@@ -297,9 +323,16 @@ class ApproveMoneyRequestView(APIView):
                     'message': 'Insufficient balance to approve this request'
                 }, status=status.HTTP_400_BAD_REQUEST)
 
-            # Transfer funds
-            parent_wallet.deduct_balance(money_request.amount)
-            child_wallet = Wallet.objects.get(user=money_request.child)
+            # Transfer funds. The child wallet must be locked too: without
+            # select_for_update, two requests approved concurrently both read
+            # the same starting balance and the second credit overwrites the
+            # first, losing money.
+            if not parent_wallet.deduct_balance(money_request.amount):
+                return Response({
+                    'status': 'error',
+                    'message': 'Insufficient balance to approve this request'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            child_wallet = Wallet.objects.select_for_update().get(user=money_request.child)
             child_wallet.add_balance(money_request.amount)
 
             # Create transactions
