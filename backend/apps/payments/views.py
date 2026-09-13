@@ -2,6 +2,7 @@
 from rest_framework import viewsets, generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from django.db import transaction
 from django.utils import timezone
@@ -15,11 +16,14 @@ from .models import Merchant, QRCode, NFCToken, AirtimePurchase, TransportTicket
 from .serializers import (
     MerchantSerializer, QRCodeSerializer, NFCTokenSerializer,
     AirtimePurchaseSerializer, TransportTicketSerializer,
-    QRPaymentSerializer, NFCPaymentSerializer, AirtimeBuySerializer, TransportBuySerializer
+    QRPaymentSerializer, NFCPaymentSerializer, AirtimeBuySerializer, TransportBuySerializer,
+    GenerateQRCodeSerializer
 )
 from core.permissions import IsParent, IsStudent, IsAdmin
 from apps.wallets.models import Wallet, Transaction
-from apps.wallets.services import LimitCheckerService, TransferService
+from apps.wallets.services import (
+    LimitCheckerService, TransferService, AccountStatusService, AccountFrozen
+)
 from apps.notifications.services import NotificationService
 from apps.gamification.services import PointCalculatorService
 from .services import PaymentProcessorService, AirtimeProviderService, TransportAPIService
@@ -32,7 +36,10 @@ class MerchantViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet for merchants"""
     queryset = Merchant.objects.filter(verified=True)
     serializer_class = MerchantSerializer
-    permission_classes = [AllowAny]
+    # Was AllowAny: the merchant directory (names, categories, physical
+    # addresses) was readable by anyone on the internet and usable to
+    # fingerprint the platform. No client flow needs it pre-login.
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -45,6 +52,10 @@ class MerchantViewSet(viewsets.ReadOnlyModelViewSet):
 class QRPaymentView(APIView):
     """Handle QR code payments"""
     permission_classes = [IsAuthenticated, IsStudent]
+    # 'payment' scope = 30/min per user: bounds automated abuse of a
+    # money-moving endpoint without affecting normal use.
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'payment'
 
     @transaction.atomic
     def post(self, request):
@@ -53,6 +64,16 @@ class QRPaymentView(APIView):
 
         qr_id = serializer.validated_data['qr_id']
         student = request.user
+
+        # A frozen account must not be able to spend. Previously nothing
+        # consulted is_account_frozen, so the safety control was inert.
+        try:
+            AccountStatusService.assert_can_spend(student)
+        except AccountFrozen as exc:
+            return Response({
+                'status': 'error',
+                'message': str(exc)
+            }, status=status.HTTP_403_FORBIDDEN)
 
         try:
             qr_code = QRCode.objects.select_for_update().get(
@@ -65,6 +86,14 @@ class QRPaymentView(APIView):
                 'status': 'error',
                 'message': 'Invalid or expired QR code'
             }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Merchant verification was never checked here, so a QR code belonging
+        # to an unverified (potentially fraudulent) merchant was payable.
+        if not qr_code.merchant.verified:
+            return Response({
+                'status': 'error',
+                'message': 'Merchant is not verified'
+            }, status=status.HTTP_403_FORBIDDEN)
 
         # Check spending limit
         if not LimitCheckerService.check_spending_limit(student, qr_code.amount, qr_code.merchant.category):
@@ -83,7 +112,11 @@ class QRPaymentView(APIView):
             }, status=status.HTTP_400_BAD_REQUEST)
 
         # Process payment
-        wallet.deduct_balance(qr_code.amount)
+        if not wallet.deduct_balance(qr_code.amount):
+            return Response({
+                'status': 'error',
+                'message': 'Insufficient balance'
+            }, status=status.HTTP_400_BAD_REQUEST)
 
         # Create transaction
         transaction_obj = Transaction.objects.create(
@@ -111,19 +144,24 @@ class QRPaymentView(APIView):
         points = PointCalculatorService.calculate_spending_points(student, qr_code.amount, qr_code.merchant.category)
         PointCalculatorService.award_points(student, points, 'payment')
 
-        # Notify parent
-        parent = student.student_profile.parent
-        NotificationService.send_notification(
-            user=parent,
-            title="Purchase Alert",
-            body=f"{student.profile.full_name} spent {qr_code.amount} at {qr_code.merchant.name}",
-            notification_type='purchase',
-            metadata={
-                'student_id': str(student.id),
-                'amount': str(qr_code.amount),
-                'merchant': qr_code.merchant.name
-            }
-        )
+        # Notify parent, if one is linked. This previously passed parent=None
+        # into send_notification for an unlinked student, which raised
+        # IntegrityError inside the atomic block and rolled back the whole
+        # payment -- an unlinked student could never pay at all.
+        student_profile = getattr(student, 'student_profile', None)
+        parent = student_profile.parent if student_profile else None
+        if parent is not None:
+            NotificationService.send_notification(
+                user=parent,
+                title="Purchase Alert",
+                body=f"{student.profile.full_name} spent {qr_code.amount} at {qr_code.merchant.name}",
+                notification_type='purchase',
+                metadata={
+                    'student_id': str(student.id),
+                    'amount': str(qr_code.amount),
+                    'merchant': qr_code.merchant.name
+                }
+            )
 
         return Response({
             'status': 'success',
@@ -141,6 +179,10 @@ class QRPaymentView(APIView):
 class NFCPaymentView(APIView):
     """Handle NFC tap-to-pay payments"""
     permission_classes = [IsAuthenticated]
+    # 'payment' scope = 30/min per user: bounds automated abuse of a
+    # money-moving endpoint without affecting normal use.
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'payment'
 
     @transaction.atomic
     def post(self, request):
@@ -164,14 +206,20 @@ class NFCPaymentView(APIView):
 
         student = nfc_token.user
 
-        # If amount not specified, get from request context (merchant terminal)
-        if not amount:
-            amount = request.data.get('amount')
-            if not amount:
-                return Response({
-                    'status': 'error',
-                    'message': 'Amount is required for NFC payment'
-                }, status=status.HTTP_400_BAD_REQUEST)
+        # A frozen account must not be able to spend. Previously nothing
+        # consulted is_account_frozen, so the safety control was inert.
+        try:
+            AccountStatusService.assert_can_spend(student)
+        except AccountFrozen as exc:
+            return Response({
+                'status': 'error',
+                'message': str(exc)
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        # `amount` is now a validated, strictly-positive Decimal from the
+        # serializer. The previous fallback to request.data.get('amount') took
+        # the raw body, so a negative or non-numeric amount bypassed every
+        # check below.
 
         # Check wallet balance
         wallet = Wallet.objects.select_for_update().get(user=student)
@@ -183,7 +231,11 @@ class NFCPaymentView(APIView):
             }, status=status.HTTP_400_BAD_REQUEST)
 
         # Process payment
-        wallet.deduct_balance(amount)
+        if not wallet.deduct_balance(amount):
+            return Response({
+                'status': 'error',
+                'message': 'Insufficient balance'
+            }, status=status.HTTP_400_BAD_REQUEST)
 
         # Create transaction
         transaction_obj = Transaction.objects.create(
@@ -214,6 +266,10 @@ class NFCPaymentView(APIView):
 class AirtimePurchaseView(APIView):
     """Purchase airtime"""
     permission_classes = [IsAuthenticated]
+    # 'payment' scope = 30/min per user: bounds automated abuse of a
+    # money-moving endpoint without affecting normal use.
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'payment'
 
     @transaction.atomic
     def post(self, request):
@@ -222,6 +278,16 @@ class AirtimePurchaseView(APIView):
 
         user = request.user
         data = serializer.validated_data
+
+        # A frozen account must not be able to spend. Previously nothing
+        # consulted is_account_frozen, so the safety control was inert.
+        try:
+            AccountStatusService.assert_can_spend(user)
+        except AccountFrozen as exc:
+            return Response({
+                'status': 'error',
+                'message': str(exc)
+            }, status=status.HTTP_403_FORBIDDEN)
 
         # Check wallet balance
         wallet = Wallet.objects.select_for_update().get(user=user)
@@ -246,12 +312,20 @@ class AirtimePurchaseView(APIView):
             result = AirtimeProviderService.purchase_airtime(
                 phone_number=data['phone_number'],
                 amount=data['amount'],
-                provider=data['provider']
+                provider=data['provider'],
+                # The purchase row's own id is the idempotency key, so a retry
+                # of this exact purchase is collapsed by the provider rather
+                # than dispensing airtime (and charging) twice.
+                idempotency_key=purchase.id,
             )
 
             if result['success']:
                 # Deduct balance
-                wallet.deduct_balance(data['amount'])
+                if not wallet.deduct_balance(data['amount']):
+                    return Response({
+                        'status': 'error',
+                        'message': 'Insufficient balance'
+                    }, status=status.HTTP_400_BAD_REQUEST)
 
                 # Update purchase record
                 purchase.status = 'completed'
@@ -281,9 +355,14 @@ class AirtimePurchaseView(APIView):
             else:
                 purchase.status = 'failed'
                 purchase.save()
+                # result['error'] carried raw upstream/internal text (e.g.
+                # "'Settings' object has no attribute 'AIRIME_API_KEY'") to the
+                # client. Log it; return a generic message.
+                logger.error("Airtime provider declined purchase %s: %s",
+                             purchase.id, result.get('error'))
                 return Response({
                     'status': 'error',
-                    'message': result['error']
+                    'message': 'Airtime purchase was declined by the provider.'
                 }, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
@@ -299,6 +378,10 @@ class AirtimePurchaseView(APIView):
 class TransportTicketView(APIView):
     """Purchase transport tickets"""
     permission_classes = [IsAuthenticated]
+    # 'payment' scope = 30/min per user: bounds automated abuse of a
+    # money-moving endpoint without affecting normal use.
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'payment'
 
     @transaction.atomic
     def post(self, request):
@@ -307,6 +390,16 @@ class TransportTicketView(APIView):
 
         user = request.user
         data = serializer.validated_data
+
+        # A frozen account must not be able to spend. Previously nothing
+        # consulted is_account_frozen, so the safety control was inert.
+        try:
+            AccountStatusService.assert_can_spend(user)
+        except AccountFrozen as exc:
+            return Response({
+                'status': 'error',
+                'message': str(exc)
+            }, status=status.HTTP_403_FORBIDDEN)
 
         # Check wallet balance
         wallet = Wallet.objects.select_for_update().get(user=user)
@@ -335,12 +428,17 @@ class TransportTicketView(APIView):
                 ticket_type=data['ticket_type'],
                 route=data['route'],
                 departure_time=data['departure_time'],
-                amount=data['amount']
+                amount=data['amount'],
+                idempotency_key=ticket.id,
             )
 
             if result['success']:
                 # Deduct balance
-                wallet.deduct_balance(data['amount'])
+                if not wallet.deduct_balance(data['amount']):
+                    return Response({
+                        'status': 'error',
+                        'message': 'Insufficient balance'
+                    }, status=status.HTTP_400_BAD_REQUEST)
 
                 # Update ticket record
                 ticket.status = 'confirmed'
@@ -371,9 +469,11 @@ class TransportTicketView(APIView):
             else:
                 ticket.status = 'cancelled'
                 ticket.save()
+                logger.error("Transport provider declined ticket %s: %s",
+                             ticket.id, result.get('error'))
                 return Response({
                     'status': 'error',
-                    'message': result['error']
+                    'message': 'Ticket booking was declined by the provider.'
                 }, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
@@ -391,16 +491,24 @@ class GenerateQRCodeView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        merchant_id = request.data.get('merchant_id')
-        amount = request.data.get('amount')
-        description = request.data.get('description', '')
-        expires_in_minutes = request.data.get('expires_in', 15)
+        serializer = GenerateQRCodeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        merchant_id = data['merchant_id']
+        amount = data['amount']
+        description = data.get('description', '')
+        expires_in_minutes = data['expires_in']
 
         try:
             merchant = Merchant.objects.get(id=merchant_id)
 
-            # Check if user is merchant owner or admin
-            if request.user.role != 'admin' and request.user.id != merchant.created_by_id:
+            # The Merchant model has no `created_by` field, so the previous
+            # ownership check (`merchant.created_by_id`) raised AttributeError
+            # and returned HTTP 500 for every non-admin caller. Until merchant
+            # ownership is modelled, restrict issuing to admins -- the only
+            # path that actually worked before.
+            if request.user.role != 'admin':
                 return Response({
                     'status': 'error',
                     'message': 'Permission denied'
