@@ -1,11 +1,24 @@
 # .dockerignore
+# Secrets
+# `.env` was NOT excluded while the Dockerfile does `COPY . .`, so the real
+# environment file -- Django SECRET_KEY, Supabase service-role key, database
+# password -- was baked into every image layer. Anyone who could pull the
+# image could read it with `docker run --entrypoint cat <image> /app/.env`,
+# and the value stays recoverable from layer history even if a later layer
+# deletes it. Secrets must be injected at runtime, never copied in.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets.json
+
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-.env.local
 .venv
 venv/
 ENV/
