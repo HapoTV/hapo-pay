@@ -1,6 +1,7 @@
 # apps/admin_panel/serializers.py
 from rest_framework import serializers
-from .models import SystemConfig, AuditLog, FraudAlert
+from .models import SystemConfig, AuditLog
+from apps.payments.models import FraudAlert
 from apps.accounts.models import User
 from apps.wallets.models import Transaction
 
@@ -24,29 +25,47 @@ class AuditLogSerializer(serializers.ModelSerializer):
 
 class FraudAlertSerializer(serializers.ModelSerializer):
     transaction_details = serializers.SerializerMethodField()
-    user_email = serializers.EmailField(source='transaction.user.email', read_only=True)
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+    reviewed_by_email = serializers.EmailField(
+        source='reviewed_by.email', read_only=True, default=None
+    )
 
     class Meta:
         model = FraudAlert
-        fields = ('id', 'transaction', 'transaction_details', 'user_email', 'alert_type',
-                  'severity', 'description', 'status', 'resolution_notes', 'created_at', 'resolved_at')
-        read_only_fields = ('id', 'created_at')
+        fields = (
+            'id', 'transaction', 'transaction_details',
+            'user_email', 'alert_type', 'reasons',
+            'severity', 'status', 'review_notes',
+            'reviewed_by', 'reviewed_by_email',
+            'reviewed_at', 'created_at', 'updated_at'
+        )
+        read_only_fields = (
+            'id', 'transaction', 'user_email',
+            'reviewed_by_email', 'reviewed_at',
+            'created_at', 'updated_at'
+        )
 
     def get_transaction_details(self, obj):
         return {
             'amount': obj.transaction.amount,
             'type': obj.transaction.type,
+            'status': obj.transaction.status,
             'created_at': obj.transaction.created_at,
-            'merchant': obj.transaction.merchant_name
+            'merchant': obj.transaction.merchant_name,
         }
 
 
 class UserManagementSerializer(serializers.ModelSerializer):
-    profile_name = serializers.CharField(source='profile.full_name', read_only=True)
+    profile_name = serializers.CharField(
+        source='profile.full_name', read_only=True, default=None
+    )
 
     class Meta:
         model = User
-        fields = ('id', 'email', 'role', 'is_active', 'profile_name', 'created_at', 'last_login')
+        fields = (
+            'id', 'email', 'role', 'is_active',
+            'profile_name', 'created_at', 'last_login'
+        )
         read_only_fields = ('id', 'created_at')
 
 

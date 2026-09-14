@@ -21,8 +21,8 @@ class TransactionSerializer(serializers.ModelSerializer):
         model = Transaction
         fields = ('id', 'user', 'user_email', 'amount', 'type', 'category', 'status',
                   'description', 'merchant_name', 'merchant_id', 'reference_id',
-                  'metadata', 'created_at')
-        read_only_fields = ('id', 'user', 'created_at', 'updated_at')
+                  'metadata', 'is_flagged', 'fraud_reasons', 'created_at')
+        read_only_fields = ('id', 'user', 'created_at', 'updated_at', 'is_flagged', 'fraud_reasons')
 
 
 class SpendingLimitSerializer(serializers.ModelSerializer):
@@ -79,3 +79,28 @@ class ApproveMoneyRequestSerializer(serializers.Serializer):
     request_id = serializers.UUIDField()
     action = serializers.ChoiceField(choices=['approve', 'decline'])
     parent_notes = serializers.CharField(max_length=500, required=False)
+
+
+class AddChildSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    full_name = serializers.CharField(max_length=255)
+    grade = serializers.IntegerField(min_value=1, max_value=12, required=False)
+    school_name = serializers.CharField(max_length=200, required=False)
+    weekly_allowance = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=0, required=False)
+
+
+class ChildSummarySerializer(serializers.ModelSerializer):
+    full_name = serializers.CharField(source='profile.full_name', read_only=True)
+    school_name = serializers.CharField(source='student_profile.school_name', read_only=True)
+    grade = serializers.IntegerField(source='student_profile.grade', read_only=True)
+    wallet_balance = serializers.DecimalField(source='wallet.balance', read_only=True, max_digits=12, decimal_places=2)
+    is_account_frozen = serializers.BooleanField(source='student_profile.is_account_frozen', read_only=True)
+
+    class Meta:
+        model = User
+        fields = ('id', 'email', 'full_name', 'grade', 'school_name', 'wallet_balance', 'is_account_frozen',
+                  'created_at')
+
+
+class FreezeAccountSerializer(serializers.Serializer):
+    freeze_reason = serializers.CharField(max_length=500)
