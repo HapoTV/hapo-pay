@@ -2,34 +2,131 @@ name: Backend CI
 
 on:
   push:
+    branches: ["main"]
     paths:
       - "backend/**"
+      - ".github/workflows/backend-ci.yml"
   pull_request:
     paths:
       - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: backend
 
 jobs:
-  test:
+  lint:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"          # match your local/prod runtime
           cache: "pip"
+          cache-dependency-path: backend/requirements.txt
 
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run tests
+      - name: Check for missing migrations
+        run: python manage.py makemigrations --check --dry-run
         env:
+          # hapopay/settings.py reads these individually with no defaults, so a
+          # single DATABASE_URL was not enough: settings import raised
+          # ImproperlyConfigured and every job failed before running anything.
           DEBUG: "True"
-          SECRET_KEY: "ci-secret-key"
-          DATABASE_URL: "sqlite:///test.sqlite3"
-        run: pytest
+          SECRET_KEY: "ci-lint-key"
+          DATABASE_NAME: "postgres"
+          DATABASE_USER: "postgres"
+          DATABASE_PASSWORD: "postgres"
+          DATABASE_HOST: "localhost"
+          DATABASE_PORT: "5432"
+          SUPABASE_URL: "https://ci.invalid"
+          SUPABASE_KEY: "ci"
+          SUPABASE_SERVICE_KEY: "ci"
+          SUPABASE_JWT_SECRET: "ci"
+
+      # Catches exactly the class of defect that shipped here: undefined names
+      # (wallets/views.py used an unimported User, accounts/views.py an
+      # unimported timezone) that only surface as a 500 at runtime.
+      - name: Static checks (undefined names, syntax)
+        # Gated on undefined names and syntax errors only -- the class of
+        # defect that shipped here (wallets/views.py used an unimported User,
+        # accounts/views.py an unimported timezone, admin_panel/views.py an
+        # unimported MerchantSerializer), each a guaranteed runtime 500.
+        # Unused imports are reported but not fatal, so this can be enabled
+        # today without first cleaning up every legacy import.
+        run: |
+          pip install pyflakes
+          pyflakes apps core middleware config hapopay | tee /tmp/pyflakes.txt || true
+          echo "--- fatal findings ---"
+          if grep -E "undefined name|invalid syntax" /tmp/pyflakes.txt; then
+            echo "Undefined name or syntax error found; failing build."
+            exit 1
+          fi
+          echo "None."
+
+      - name: Dependency vulnerability audit
+        run: |
+          pip install pip-audit
+          pip-audit --requirement requirements.txt --strict
+        continue-on-error: true
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15   # match your Supabase project's Postgres version
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: hapo_pay_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      DEBUG: "True"
+      SECRET_KEY: "ci-secret-key"
+      DATABASE_NAME: "hapo_pay_test"
+      DATABASE_USER: "postgres"
+      DATABASE_PASSWORD: "postgres"
+      DATABASE_HOST: "localhost"
+      DATABASE_PORT: "5432"
+      # Placeholders: no test should reach Supabase. Required because
+      # settings.py has no defaults for them.
+      SUPABASE_URL: "https://ci.invalid"
+      SUPABASE_KEY: "ci"
+      SUPABASE_SERVICE_KEY: "ci"
+      SUPABASE_JWT_SECRET: "ci"
+      # The CI Postgres service does not offer TLS.
+      DATABASE_SSLMODE: "disable"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # pytest-django creates + migrates its own test_* database automatically.
+      # We deliberately don't run `manage.py migrate` by hand here, so a broken
+      # migration graph fails the build loudly instead of being papered over.
+      - name: Run tests
+        run: pytest -v

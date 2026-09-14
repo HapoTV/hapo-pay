@@ -1,6 +1,7 @@
 # middleware/audit_log_middleware.py
 from django.utils.deprecation import MiddlewareMixin
 from apps.admin_panel.models import AuditLog
+from middleware.rate_limit_middleware import get_client_ip
 import logging
 
 logger = logging.getLogger(__name__)
@@ -27,28 +28,37 @@ class AuditLogMiddleware(MiddlewareMixin):
             # Determine action type
             action = self.get_action_type(request.method)
 
-            # Create audit log (async to avoid blocking)
+            audit_data = getattr(request, 'audit_data', None)
+            if audit_data is None:
+                # process_request did not run (e.g. an earlier middleware
+                # short-circuited); nothing reliable to record.
+                return response
+
             try:
                 AuditLog.objects.create(
                     user=request.user,
                     action=action,
                     resource_type=self.get_resource_type(request.path),
-                    ip_address=request.audit_data['ip_address'],
-                    user_agent=request.audit_data['user_agent']
+                    # ip_address is NOT NULL, so a missing IP previously raised
+                    # IntegrityError and the audit row was silently dropped.
+                    ip_address=audit_data['ip_address'] or '0.0.0.0',
+                    user_agent=(audit_data['user_agent'] or '')[:1000]
                 )
-            except Exception as e:
-                logger.error(f"Failed to create audit log: {str(e)}")
+            except Exception:
+                logger.exception("Failed to create audit log for %s %s",
+                                 request.method, request.path)
 
         return response
 
     def get_client_ip(self, request):
-        """Get client IP address"""
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-        if x_forwarded_for:
-            ip = x_forwarded_for.split(',')[0]
-        else:
-            ip = request.META.get('REMOTE_ADDR')
-        return ip
+        """Get client IP address.
+
+        Delegates to the shared helper, which reads X-Forwarded-For from the
+        trusted end. Taking the left-most entry (as this did) records an
+        attacker-controlled value in the audit trail, making the trail
+        misleading in exactly the investigation it exists for.
+        """
+        return get_client_ip(request)
 
     def get_action_type(self, method):
         """Map HTTP method to action type"""
