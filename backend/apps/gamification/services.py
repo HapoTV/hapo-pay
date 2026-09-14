@@ -1,6 +1,7 @@
 # apps/gamification/services.py
 from django.db import transaction
 from django.utils import timezone
+from datetime import timedelta
 from decimal import Decimal
 from .models import Reward, UserAchievement, Achievement
 import logging
@@ -12,6 +13,7 @@ class PointCalculatorService:
     """Calculate and award points for activities"""
 
     ACHIEVEMENT_BONUS_POINTS = 50
+    STREAK_MILESTONES = frozenset({7, 30, 100, 365})
 
     @staticmethod
     @transaction.atomic
@@ -52,28 +54,49 @@ class PointCalculatorService:
 
     @staticmethod
     def update_streak(user):
-        """Update daily streak.
+        """Record activity for today and maintain the consecutive-day streak.
 
-        NOTE: this is still keyed off Reward.updated_at, which is auto_now and
-        therefore bumped by *every* save (including add_points), so the streak
-        cannot be computed correctly. Tracking a dedicated last_streak_date
-        column is proposed in the audit; this function has no callers today.
+        Idempotent per day: calling it repeatedly on the same date is a no-op,
+        so it can safely be invoked from any activity path.
+
+        This used to compare `Reward.updated_at.date()` against yesterday.
+        `updated_at` is auto_now, so awarding points -- or any other save --
+        moved it, meaning the streak was measuring "last time this row changed"
+        rather than "last day the user was active". It now reads a dedicated
+        last_streak_date column that only this method writes.
         """
-        reward = Reward.objects.get(user=user)
+        today = timezone.localdate()
 
-        # Check if last update was yesterday
-        from datetime import timedelta
-        if reward.updated_at.date() == timezone.now().date() - timedelta(days=1):
-            reward.streak_days += 1
-            reward.save()
+        with transaction.atomic():
+            Reward.objects.get_or_create(user=user)
+            reward = Reward.objects.select_for_update().get(user=user)
 
-            # Bonus for streak milestones
-            if reward.streak_days in [7, 30, 100, 365]:
-                PointCalculatorService.award_points(user, reward.streak_days * 10, 'streak_bonus')
-        elif reward.updated_at.date() < timezone.now().date() - timedelta(days=1):
-            # Streak broken
-            reward.streak_days = 0
-            reward.save()
+            last = reward.last_streak_date
+
+            if last == today:
+                # Already counted today.
+                return reward.streak_days
+
+            if last == today - timedelta(days=1):
+                reward.streak_days += 1
+            else:
+                # First ever activity, or the chain was broken. Today counts
+                # as day one rather than zero -- the user *is* active now.
+                reward.streak_days = 1
+
+            reward.last_streak_date = today
+            reward.save(update_fields=['streak_days', 'last_streak_date', 'updated_at'])
+
+            milestone_reached = reward.streak_days in PointCalculatorService.STREAK_MILESTONES
+
+        # Awarded outside the block above so the bonus (which opens its own
+        # atomic block and takes the same row lock) cannot nest inside it.
+        if milestone_reached:
+            PointCalculatorService.award_points(
+                user, reward.streak_days * 10, 'streak_bonus'
+            )
+
+        return reward.streak_days
 
     @staticmethod
     def check_achievements(user, reward):

@@ -20,6 +20,7 @@ from .serializers import (
     GenerateQRCodeSerializer
 )
 from core.permissions import IsParent, IsStudent, IsAdmin
+from core.idempotency import IdempotentMixin
 from apps.wallets.models import Wallet, Transaction
 from apps.wallets.services import (
     LimitCheckerService, TransferService, AccountStatusService, AccountFrozen
@@ -30,6 +31,11 @@ from .services import PaymentProcessorService, AirtimeProviderService, Transport
 import logging
 
 logger = logging.getLogger(__name__)
+
+# NFC taps carry no merchant context, so they cannot be attributed to a real
+# spending category. 'other' matches the Transaction row this path already
+# wrote; naming it once keeps the limit check and the row in agreement.
+NFC_CATEGORY = 'other'
 
 
 class MerchantViewSet(viewsets.ReadOnlyModelViewSet):
@@ -49,7 +55,7 @@ class MerchantViewSet(viewsets.ReadOnlyModelViewSet):
         return queryset
 
 
-class QRPaymentView(APIView):
+class QRPaymentView(IdempotentMixin, APIView):
     """Handle QR code payments"""
     permission_classes = [IsAuthenticated, IsStudent]
     # 'payment' scope = 30/min per user: bounds automated abuse of a
@@ -137,8 +143,9 @@ class QRPaymentView(APIView):
         qr_code.used_at = timezone.now()
         qr_code.save()
 
-        # Update spending limits
-        LimitCheckerService.update_spent_amounts(student, qr_code.amount, qr_code.merchant.category)
+        # No counter to update: LimitCheckerService derives spend from the
+        # Transaction row written above, so recording the payment *is*
+        # recording the spend. There is nothing left to drift out of sync.
 
         # Award points for spending (based on responsible spending)
         points = PointCalculatorService.calculate_spending_points(student, qr_code.amount, qr_code.merchant.category)
@@ -176,7 +183,7 @@ class QRPaymentView(APIView):
         })
 
 
-class NFCPaymentView(APIView):
+class NFCPaymentView(IdempotentMixin, APIView):
     """Handle NFC tap-to-pay payments"""
     permission_classes = [IsAuthenticated]
     # 'payment' scope = 30/min per user: bounds automated abuse of a
@@ -221,8 +228,19 @@ class NFCPaymentView(APIView):
         # the raw body, so a negative or non-numeric amount bypassed every
         # check below.
 
-        # Check wallet balance
+        # Check wallet balance. Locked before the limit check so the check and
+        # the debit are serialised against concurrent payments by this student.
         wallet = Wallet.objects.select_for_update().get(user=student)
+
+        # Enforce the spending limit. This path did not check limits at all,
+        # while QRPaymentView did -- so a parent's category limit was bypassable
+        # simply by paying with a tap instead of a scan. A control that only
+        # covers some of the routes to the same outcome is not a control.
+        if not LimitCheckerService.check_spending_limit(student, amount, NFC_CATEGORY):
+            return Response({
+                'status': 'error',
+                'message': 'Transaction exceeds spending limit for this category'
+            }, status=status.HTTP_403_FORBIDDEN)
 
         if wallet.balance < amount:
             return Response({
@@ -242,7 +260,7 @@ class NFCPaymentView(APIView):
             user=student,
             amount=amount,
             type='payment',
-            category='other',
+            category=NFC_CATEGORY,
             status='completed',
             description="NFC Payment",
             reference_id=nfc_token.device_id
@@ -250,7 +268,26 @@ class NFCPaymentView(APIView):
 
         # Update last used
         nfc_token.last_used_at = timezone.now()
-        nfc_token.save()
+        nfc_token.save(update_fields=['last_used_at'])
+
+        # Notify the parent, as the QR path does. A parent watching their
+        # child's spending should not see tap payments simply missing from the
+        # alert stream. Guarded for an unlinked student, and NotificationService
+        # defers actual delivery to transaction commit.
+        student_profile = getattr(student, 'student_profile', None)
+        parent = student_profile.parent if student_profile else None
+        if parent is not None:
+            NotificationService.send_notification(
+                user=parent,
+                title="Purchase Alert",
+                body=f"{student.get_full_name()} spent {amount} by tap payment",
+                notification_type='spending_alert',
+                metadata={
+                    'student_id': str(student.id),
+                    'amount': str(amount),
+                    'method': 'nfc',
+                }
+            )
 
         return Response({
             'status': 'success',
@@ -263,7 +300,7 @@ class NFCPaymentView(APIView):
         })
 
 
-class AirtimePurchaseView(APIView):
+class AirtimePurchaseView(IdempotentMixin, APIView):
     """Purchase airtime"""
     permission_classes = [IsAuthenticated]
     # 'payment' scope = 30/min per user: bounds automated abuse of a
@@ -375,7 +412,7 @@ class AirtimePurchaseView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class TransportTicketView(APIView):
+class TransportTicketView(IdempotentMixin, APIView):
     """Purchase transport tickets"""
     permission_classes = [IsAuthenticated]
     # 'payment' scope = 30/min per user: bounds automated abuse of a

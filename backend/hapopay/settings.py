@@ -2,6 +2,7 @@
 import os
 from pathlib import Path
 from datetime import timedelta
+from celery.schedules import crontab
 import environ
 
 # Initialize environment variables
@@ -320,6 +321,27 @@ CELERY_TIMEZONE = TIME_ZONE
 # not lost on deploy.
 CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
+
+# The only scheduled work in the system. Deliberately small: spending-limit
+# windows are derived from Transaction rows rather than from counters, so no
+# reset job exists to silently stop running.
+CELERY_BEAT_SCHEDULE = {
+    'prune-idempotency-records': {
+        'task': 'apps.wallets.tasks.prune_idempotency_records',
+        'schedule': crontab(hour=3, minute=30),
+    },
+}
+
+# Replay protection for money-moving endpoints (see core/idempotency.py).
+#
+# Optional by default: the shipped Flutter and web clients do not send an
+# Idempotency-Key header yet, and rejecting requests without one would be an
+# immediate outage for every installed app. Requests that omit it are logged
+# and run unprotected. Flip this to True once both clients send the header --
+# that is the point at which double-tap protection becomes guaranteed rather
+# than best-effort.
+IDEMPOTENCY_REQUIRED = env.bool('IDEMPOTENCY_REQUIRED', default=False)
+IDEMPOTENCY_RETENTION_DAYS = env.int('IDEMPOTENCY_RETENTION_DAYS', default=7)
 
 # Transport & cookie security
 #

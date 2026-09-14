@@ -10,9 +10,13 @@ services:
     ports:
       - "8000:8000"
     environment:
+      # DEBUG is intentionally NOT set here. It used to be hardcoded to 1 in
+      # all three services, which silently overrode whatever .env said -- so a
+      # stack brought up with a production-shaped .env still ran with full
+      # tracebacks, and the security settings gated on `if not DEBUG` (secure
+      # cookies, HSTS, SSL redirect) were all switched off. Let .env decide.
       - DJANGO_SETTINGS_MODULE=hapopay.settings
       - PYTHONPATH=/app
-      - DEBUG=1
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - CELERY_BROKER_URL=redis://redis:6379/1
@@ -28,7 +32,12 @@ services:
     networks:
       - hapopay-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/admin/"]
+      # /health/ is the liveness probe: it answers without touching the
+      # database or cache. This used to probe /admin/, which pulls in sessions,
+      # auth and template rendering -- and whose redirect returned a success
+      # status even when the database was unreachable, so the check passed for
+      # a container that could not serve a single API request.
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -60,7 +69,6 @@ services:
     command: celery -A hapopay worker --loglevel=info
     environment:
       - DJANGO_SETTINGS_MODULE=hapopay.settings
-      - DEBUG=1
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - CELERY_BROKER_URL=redis://redis:6379/1
@@ -82,7 +90,6 @@ services:
     command: celery -A hapopay beat --loglevel=info
     environment:
       - DJANGO_SETTINGS_MODULE=hapopay.settings
-      - DEBUG=1
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - CELERY_BROKER_URL=redis://redis:6379/1

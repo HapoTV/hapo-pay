@@ -13,10 +13,21 @@ class Reward(models.Model):
     streak_days = models.IntegerField(default=0)
     total_saved = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     total_spent = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    # The streak needs its own column. It used to be derived from `updated_at`,
+    # which is auto_now and therefore bumped by every save -- including
+    # add_points() -- so "last active day" was really "last time anything at all
+    # changed", and the streak could never be computed correctly.
+    last_streak_date = models.DateField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'rewards'
+        indexes = [
+            # LeaderboardView does `ORDER BY points DESC LIMIT n` and computes
+            # rank with `COUNT(*) WHERE points > x`. Both were sequential scans
+            # of the whole rewards table on every leaderboard load.
+            models.Index(fields=['-points'], name='reward_points_desc_idx'),
+        ]
 
     def __str__(self):
         return f"{self.user.email} - Level {self.level} - {self.points} points"

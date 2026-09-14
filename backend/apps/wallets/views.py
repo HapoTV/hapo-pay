@@ -15,6 +15,7 @@ from .serializers import (
     CreateMoneyRequestSerializer, ApproveMoneyRequestSerializer
 )
 from core.permissions import IsParent, IsStudent, IsOwnAccount
+from core.idempotency import IdempotentMixin
 from core.utils import parse_date_param
 from core.supabase_client import supabase
 from apps.notifications.services import NotificationService
@@ -91,7 +92,7 @@ class TransactionViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(serializer.data)
 
 
-class TransferFundsView(APIView):
+class TransferFundsView(IdempotentMixin, APIView):
     """Handle fund transfers between parent and child"""
     permission_classes = [IsAuthenticated, IsParent]
     throttle_classes = [ScopedRateThrottle]
@@ -195,7 +196,12 @@ class SpendingLimitViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsParent]
 
     def get_queryset(self):
-        return SpendingLimit.objects.filter(parent=self.request.user)
+        # select_related: SpendingLimitSerializer exposes child_email and
+        # parent_email, each of which walked a FK per row -- two extra queries
+        # per limit, so a parent with five limits cost eleven queries to list.
+        return (SpendingLimit.objects
+                .select_related('child', 'parent')
+                .filter(parent=self.request.user))
 
     def create(self, request):
         serializer = UpdateSpendingLimitSerializer(data=request.data)
@@ -286,7 +292,7 @@ class MoneyRequestViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_201_CREATED)
 
 
-class ApproveMoneyRequestView(APIView):
+class ApproveMoneyRequestView(IdempotentMixin, APIView):
     """Approve or decline money requests"""
     permission_classes = [IsAuthenticated, IsParent]
     throttle_classes = [ScopedRateThrottle]

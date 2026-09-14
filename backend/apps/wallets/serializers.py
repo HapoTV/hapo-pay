@@ -1,7 +1,9 @@
 # apps/wallets/serializers.py
 from rest_framework import serializers
 from django.utils import timezone
+from decimal import Decimal
 from .models import Wallet, Transaction, SpendingLimit, MoneyRequest
+from .services import LimitCheckerService
 from apps.accounts.models import User
 
 
@@ -26,15 +28,49 @@ class TransactionSerializer(serializers.ModelSerializer):
 
 
 class SpendingLimitSerializer(serializers.ModelSerializer):
+    """Serializes a spending limit, including how much has been spent.
+
+    daily_spent / weekly_spent / monthly_spent used to be stored columns. They
+    are now derived from Transaction rows on read. The JSON shape is
+    deliberately unchanged -- the Flutter and web clients already render these
+    three keys, and the point of this change is that the numbers become
+    correct, not that the contract moves.
+    """
+
     child_email = serializers.EmailField(source='child.email', read_only=True)
     parent_email = serializers.EmailField(source='parent.email', read_only=True)
+
+    daily_spent = serializers.SerializerMethodField()
+    weekly_spent = serializers.SerializerMethodField()
+    monthly_spent = serializers.SerializerMethodField()
 
     class Meta:
         model = SpendingLimit
         fields = ('id', 'child', 'child_email', 'parent', 'parent_email', 'category',
                   'daily_limit', 'weekly_limit', 'monthly_limit', 'daily_spent',
                   'weekly_spent', 'monthly_spent', 'is_enabled', 'created_at')
-        read_only_fields = ('id', 'child', 'parent', 'daily_spent', 'weekly_spent', 'monthly_spent')
+        read_only_fields = ('id', 'child', 'parent')
+
+    def _spent(self, obj):
+        """Per-child spend map, computed once per serialization pass.
+
+        Cached on the serializer context so rendering a child's nine categories
+        costs one query rather than nine. `self.context` is shared across the
+        whole `many=True` pass, which is exactly the scope we want.
+        """
+        cache = self.context.setdefault('_spent_by_child', {})
+        if obj.child_id not in cache:
+            cache[obj.child_id] = LimitCheckerService.spent_by_category(obj.child_id)
+        return cache[obj.child_id].get(obj.category, {})
+
+    def get_daily_spent(self, obj):
+        return self._spent(obj).get('daily', Decimal('0'))
+
+    def get_weekly_spent(self, obj):
+        return self._spent(obj).get('weekly', Decimal('0'))
+
+    def get_monthly_spent(self, obj):
+        return self._spent(obj).get('monthly', Decimal('0'))
 
 
 class MoneyRequestSerializer(serializers.ModelSerializer):

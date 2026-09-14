@@ -1,7 +1,8 @@
 # apps/wallets/services.py
 from django.db import transaction
-from django.db.models import F
+from django.db.models import Q, Sum
 from django.utils import timezone
+from datetime import timedelta
 from decimal import Decimal
 from .models import Wallet, Transaction, SpendingLimit
 from apps.notifications.services import NotificationService
@@ -109,39 +110,122 @@ class AccountFrozen(Exception):
 
 
 class LimitCheckerService:
-    """Check spending limits for students"""
+    """Derive a student's spend per window and check it against their limits.
+
+    Spend is computed from Transaction rows rather than from stored counters.
+    The previous design kept daily_spent/weekly_spent/monthly_spent columns and
+    incremented them on every payment -- but nothing ever reset them, because
+    no periodic task existed. `daily_spent` therefore meant "spent since the
+    account was created", and a child was locked out permanently once their
+    lifetime spend in a category exceeded their daily limit.
+
+    Deriving removes that class of bug entirely: there is no counter to drift,
+    no reset job that can silently stop running, and no window boundary to get
+    wrong at deploy time. The cost is one indexed aggregate per payment
+    (see the txn_user_category_created_idx index on Transaction).
+    """
+
+    # What counts as spending. Both sides of a transfer are written with
+    # type='transfer' and are indistinguishable at the row level, so transfers
+    # are excluded rather than counted as spend on the receiving child -- which
+    # would make a parent topping up a wallet consume that child's own limit.
+    SPEND_TYPES = ('payment', 'withdrawal')
+
+    # Only money that actually moved. 'pending' has not been captured yet and
+    # 'failed'/'refunded'/'cancelled' either never left the wallet or came back.
+    SPEND_STATUSES = ('completed',)
 
     @staticmethod
-    def check_spending_limit(student, amount, category):
-        """Check if transaction is within spending limits.
+    def window_starts(now=None):
+        """Return the inclusive start of each limit window, in local time.
 
-        Must be called inside the same transaction (and before
-        update_spent_amounts) so the check and the increment see the same
-        locked row; otherwise concurrent payments each pass the check against
-        a stale counter and together exceed the limit.
+        Uses the project timezone rather than UTC so "daily" means the calendar
+        day the family actually lives in.
+        """
+        now = now or timezone.localtime()
+        day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        return {
+            'daily': day_start,
+            # Week starts Monday, matching date.weekday().
+            'weekly': day_start - timedelta(days=day_start.weekday()),
+            'monthly': day_start.replace(day=1),
+        }
+
+    @classmethod
+    def spent_in_windows(cls, student, category, now=None):
+        """Spend by this student in this category, per window.
+
+        One query. The three windows are nested (daily within weekly within
+        monthly), so a single scan bounded by the monthly start can produce all
+        three totals with conditional aggregates.
+        """
+        starts = cls.window_starts(now)
+
+        totals = Transaction.objects.filter(
+            user=student,
+            category=category,
+            type__in=cls.SPEND_TYPES,
+            status__in=cls.SPEND_STATUSES,
+            created_at__gte=starts['monthly'],
+        ).aggregate(
+            daily=Sum('amount', filter=Q(created_at__gte=starts['daily'])),
+            weekly=Sum('amount', filter=Q(created_at__gte=starts['weekly'])),
+            monthly=Sum('amount'),
+        )
+
+        return {k: (v or Decimal('0')) for k, v in totals.items()}
+
+    @classmethod
+    def spent_by_category(cls, student, now=None):
+        """Spend per window for EVERY category, in one query.
+
+        Used when serializing a list of limits, so rendering a child's nine
+        categories costs one query instead of nine.
+        """
+        starts = cls.window_starts(now)
+
+        rows = Transaction.objects.filter(
+            user=student,
+            type__in=cls.SPEND_TYPES,
+            status__in=cls.SPEND_STATUSES,
+            created_at__gte=starts['monthly'],
+        ).values('category').annotate(
+            daily=Sum('amount', filter=Q(created_at__gte=starts['daily'])),
+            weekly=Sum('amount', filter=Q(created_at__gte=starts['weekly'])),
+            monthly=Sum('amount'),
+        )
+
+        return {
+            row['category']: {
+                'daily': row['daily'] or Decimal('0'),
+                'weekly': row['weekly'] or Decimal('0'),
+                'monthly': row['monthly'] or Decimal('0'),
+            }
+            for row in rows
+        }
+
+    @classmethod
+    def check_spending_limit(cls, student, amount, category):
+        """Return True if this payment is within the child's limits.
+
+        Must be called inside the transaction that will write the payment, and
+        the caller must already hold the wallet row lock. The lock is what
+        closes the check-then-act window: without it two concurrent payments
+        both aggregate the same history, both decide they fit, and together
+        exceed the limit. The aggregate below reads committed rows only, so
+        serialising on the wallet is what makes the answer still true by the
+        time the new Transaction row is written.
         """
         try:
-            limit = SpendingLimit.objects.select_for_update().get(
+            limit = SpendingLimit.objects.get(
                 child=student, category=category, is_enabled=True
             )
-            return limit.check_limit(amount)
         except SpendingLimit.DoesNotExist:
-            # No limit set for this category
+            # No limit configured for this category.
             return True
 
-    @staticmethod
-    def update_spent_amounts(student, amount, category):
-        """Update spent amounts after a transaction.
-
-        Uses an F() expression so the increment is computed by the database
-        rather than from a value read earlier in Python; two concurrent
-        payments can no longer overwrite each other's counter.
-        """
-        SpendingLimit.objects.filter(child=student, category=category).update(
-            daily_spent=F('daily_spent') + amount,
-            weekly_spent=F('weekly_spent') + amount,
-            monthly_spent=F('monthly_spent') + amount,
-        )
+        spent = cls.spent_in_windows(student, category)
+        return limit.check_limit(Decimal(amount), spent)
 
 
 class WalletAlertService:

@@ -25,6 +25,18 @@ class Wallet(models.Model):
     class Meta:
         db_table = 'wallets'
         ordering = ['-created_at']
+        constraints = [
+            # The last line of defence for the invariant this whole app exists
+            # to protect. MinValueValidator(0) above does NOT run on .save() --
+            # it only fires inside full_clean(), which no service path calls --
+            # so until now `balance >= 0` was enforced only by Python guards
+            # that any new code path could bypass. This holds regardless of
+            # which code, migration or psql session does the writing.
+            models.CheckConstraint(
+                check=models.Q(balance__gte=0),
+                name='wallet_balance_non_negative',
+            ),
+        ]
 
     def __str__(self):
         return f"{self.user.email} - {self.currency} {self.balance}"
@@ -112,6 +124,21 @@ class Transaction(models.Model):
             models.Index(fields=['user', 'created_at']),
             models.Index(fields=['status']),
             models.Index(fields=['type']),
+            # Serves LimitCheckerService.spent_in_window(), which aggregates
+            # one student's completed spend in one category over a time window
+            # on every payment. Without this the check is a scan of the user's
+            # whole transaction history, growing with account age.
+            models.Index(
+                fields=['user', 'category', 'created_at'],
+                name='txn_user_category_created_idx',
+            ),
+        ]
+        constraints = [
+            # MinValueValidator(0.01) on `amount` never executed on .save().
+            models.CheckConstraint(
+                check=models.Q(amount__gt=0),
+                name='transaction_amount_positive',
+            ),
         ]
 
     def __str__(self):
@@ -130,9 +157,6 @@ class SpendingLimit(models.Model):
     daily_limit = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
     weekly_limit = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
     monthly_limit = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
-    daily_spent = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    weekly_spent = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    monthly_spent = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     is_enabled = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -140,31 +164,47 @@ class SpendingLimit(models.Model):
     class Meta:
         db_table = 'spending_limits'
         unique_together = ['child', 'category']
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(daily_limit__gte=0)
+                      & models.Q(weekly_limit__gte=0)
+                      & models.Q(monthly_limit__gte=0),
+                name='spending_limit_amounts_non_negative',
+            ),
+        ]
 
     def __str__(self):
         return f"Limit for {self.child.email} - {self.category}"
 
-    def check_limit(self, amount):
-        """Check if transaction amount is within limits"""
-        from django.utils import timezone
-        from datetime import timedelta
+    def check_limit(self, amount, spent):
+        """Return True if `amount` fits within every enabled limit.
 
+        `spent` is a mapping {'daily': Decimal, 'weekly': Decimal,
+        'monthly': Decimal} of what this child has ALREADY spent in this
+        category in each window, derived from Transaction rows by
+        LimitCheckerService.
+
+        This used to read self.daily_spent / weekly_spent / monthly_spent --
+        stored counters that were incremented on every payment and reset by
+        nothing. There was no reset task, so `daily_spent` was really
+        "spent since the account was created". Once a child's lifetime spend
+        in a category passed their daily limit they were blocked permanently,
+        and the parent had no way to see why. Deriving the number from the
+        transactions that caused it removes both the drift and the reset job
+        that could silently stop running.
+        """
         if not self.is_enabled:
             return True
 
-        # Check daily limit
-        if self.daily_limit > 0:
-            if self.daily_spent + amount > self.daily_limit:
-                return False
+        windows = (
+            (self.daily_limit, spent.get('daily', Decimal('0'))),
+            (self.weekly_limit, spent.get('weekly', Decimal('0'))),
+            (self.monthly_limit, spent.get('monthly', Decimal('0'))),
+        )
 
-        # Check weekly limit
-        if self.weekly_limit > 0:
-            if self.weekly_spent + amount > self.weekly_limit:
-                return False
-
-        # Check monthly limit
-        if self.monthly_limit > 0:
-            if self.monthly_spent + amount > self.monthly_limit:
+        for limit, already_spent in windows:
+            # A limit of 0 means "no limit set", matching the field default.
+            if limit > 0 and already_spent + amount > limit:
                 return False
 
         return True
@@ -197,3 +237,55 @@ class MoneyRequest(models.Model):
 
     def __str__(self):
         return f"{self.child.email} requests {self.amount} from {self.parent.email}"
+
+class IdempotencyRecord(models.Model):
+    """One completed response to a money-moving request, keyed by client token.
+
+    Why this exists: every payment endpoint here was replay-safe only by
+    accident. QR payments are protected because a QRCode is single-use and
+    locked -- a second submission finds `is_used=True` and is rejected. NFC,
+    airtime, transport, transfers and money-request approvals had no such
+    natural key, so a double-tapped card, a mobile client retrying after a
+    timeout, or a user hitting "pay" twice charged the wallet twice. The
+    request succeeded both times, which is exactly why nobody noticed: there
+    is no error to report, just two identical debits.
+
+    The contract is the standard one (and mirrors the `Idempotency-Key` header
+    core/http_client.py already sends to our own providers): the client
+    generates a key per user-intent, not per attempt. First request with that
+    key runs and its response is stored here; every later request with the same
+    key returns the stored response without re-executing anything.
+
+    `user` is part of the key so one caller's chosen token can never collide
+    with -- or worse, replay -- another caller's response.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+                             related_name='idempotency_records')
+    key = models.CharField(max_length=255)
+    endpoint = models.CharField(max_length=200)
+    # Fingerprint of the request body. A client that reuses a key with a
+    # DIFFERENT payload has a bug, and silently returning the first response
+    # would hide it; we return 422 instead so the bug is visible.
+    request_fingerprint = models.CharField(max_length=64)
+    response_status = models.PositiveSmallIntegerField()
+    response_body = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'idempotency_records'
+        constraints = [
+            # The whole mechanism rests on this. Two concurrent replays both
+            # miss on SELECT and both proceed; the unique index is what makes
+            # the second INSERT fail so only one of them can have executed.
+            models.UniqueConstraint(fields=['user', 'key'],
+                                    name='idempotency_user_key_unique'),
+        ]
+        indexes = [
+            # Supports pruning old records by age.
+            models.Index(fields=['created_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.user_id}:{self.key} -> {self.response_status}"
