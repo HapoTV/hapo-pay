@@ -20,7 +20,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt gunicorn
+# gunicorn is pinned here rather than installed unpinned: an unpinned install
+# makes the image non-reproducible and had been pulling whatever release was
+# current, including versions affected by the request-smuggling advisories
+# fixed in 22.0/23.0 (CVE-2024-1135, CVE-2024-6827).
+RUN pip install --no-cache-dir -r requirements.txt 'gunicorn==23.0.0'
 
 # Final stage
 FROM python:3.11-slim
@@ -33,9 +37,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # Install runtime system dependencies
+# Runtime needs the shared libraries only; the -dev headers belong to the
+# build stage and just widen the image's package surface.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq-dev \
-    libffi-dev \
+    libpq5 \
+    libffi8 \
     curl \
     netcat-openbsd \
     && apt-get clean \
