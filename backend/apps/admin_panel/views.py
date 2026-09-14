@@ -4,17 +4,22 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from django.db.models import Sum, Count, Q
+from django.db.models.functions import TruncMonth
+from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
+from decimal import Decimal
 from .models import SystemConfig, AuditLog, FraudAlert
 from .serializers import (
     SystemConfigSerializer, AuditLogSerializer, FraudAlertSerializer,
     UserManagementSerializer, PlatformAnalyticsSerializer
 )
 from core.permissions import IsAdmin
+from core.utils import parse_date_param
 from apps.accounts.models import User
 from apps.wallets.models import Transaction, Wallet
 from apps.payments.models import Merchant
+from apps.payments.serializers import MerchantSerializer
 import logging
 
 logger = logging.getLogger(__name__)
@@ -46,10 +51,14 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
             queryset = queryset.filter(user_id=user_id)
         if action:
             queryset = queryset.filter(action=action)
-        if start_date:
-            queryset = queryset.filter(created_at__gte=start_date)
-        if end_date:
-            queryset = queryset.filter(created_at__lte=end_date)
+        # Invalid values are ignored rather than 500-ing the endpoint.
+        try:
+            if start_date:
+                queryset = queryset.filter(created_at__gte=parse_date_param(start_date))
+            if end_date:
+                queryset = queryset.filter(created_at__lte=parse_date_param(end_date))
+        except ValueError:
+            logger.warning("Ignoring invalid date filter on audit log query")
 
         return queryset
 
@@ -86,22 +95,50 @@ class UserManagementView(APIView):
     """Admin user management"""
     permission_classes = [IsAuthenticated, IsAdmin]
 
+    # Cap the page size so this endpoint cannot be used to dump the whole
+    # user table (and all its PII) in a single response.
+    DEFAULT_PAGE_SIZE = 50
+    MAX_PAGE_SIZE = 200
+
     def get(self, request):
-        users = User.objects.all()
+        # select_related('profile'): UserManagementSerializer reads
+        # profile.full_name, which issued one extra query per user (N+1).
+        users = User.objects.select_related('profile').all()
 
         # Apply filters
         role = request.query_params.get('role')
         is_active = request.query_params.get('is_active')
 
         if role:
+            valid_roles = {choice[0] for choice in User.ROLE_CHOICES}
+            if role not in valid_roles:
+                return Response({
+                    'status': 'error',
+                    'message': f"role must be one of: {', '.join(sorted(valid_roles))}"
+                }, status=status.HTTP_400_BAD_REQUEST)
             users = users.filter(role=role)
         if is_active is not None:
             users = users.filter(is_active=is_active.lower() == 'true')
 
-        serializer = UserManagementSerializer(users, many=True)
+        # The response was previously unbounded.
+        try:
+            limit = int(request.query_params.get('limit', self.DEFAULT_PAGE_SIZE))
+            offset = int(request.query_params.get('offset', 0))
+        except (TypeError, ValueError):
+            return Response({
+                'status': 'error',
+                'message': 'limit and offset must be integers'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        limit = max(1, min(limit, self.MAX_PAGE_SIZE))
+        offset = max(0, offset)
+
+        total = users.count()
+        serializer = UserManagementSerializer(users[offset:offset + limit], many=True)
         return Response({
             'status': 'success',
-            'data': serializer.data
+            'data': serializer.data,
+            'pagination': {'total': total, 'limit': limit, 'offset': offset},
         })
 
     def put(self, request, user_id):
@@ -113,21 +150,52 @@ class UserManagementView(APIView):
                 'message': 'User not found'
             }, status=status.HTTP_404_NOT_FOUND)
 
-        # Update user
+        # Update user. `role` is validated against ROLE_CHOICES: Django does
+        # not enforce choices on .save(), so any arbitrary string (e.g.
+        # "superadmin") was previously written straight to the column, silently
+        # locking the account out of every role-based permission check.
         if 'role' in request.data:
-            user.role = request.data['role']
+            new_role = request.data['role']
+            valid_roles = {choice[0] for choice in User.ROLE_CHOICES}
+            if new_role not in valid_roles:
+                return Response({
+                    'status': 'error',
+                    'message': f"role must be one of: {', '.join(sorted(valid_roles))}"
+                }, status=status.HTTP_400_BAD_REQUEST)
+            user.role = new_role
+
         if 'is_active' in request.data:
-            user.is_active = request.data['is_active']
+            is_active = request.data['is_active']
+            if not isinstance(is_active, bool):
+                return Response({
+                    'status': 'error',
+                    'message': 'is_active must be a boolean'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            # Stop an admin from locking themselves out mid-session.
+            if user.id == request.user.id and not is_active:
+                return Response({
+                    'status': 'error',
+                    'message': 'You cannot deactivate your own account'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            user.is_active = is_active
 
         user.save()
 
-        # Log action
+        # Log action. Only the fields this endpoint actually acts on are
+        # recorded: `changes=request.data` persisted the entire request body
+        # verbatim into the audit trail, so any credential or PII a caller
+        # included (a password, a token) was written to durable storage in
+        # cleartext and then exposed through AuditLogSerializer.
         AuditLog.objects.create(
             user=request.user,
             action='admin_action',
             resource_type='user',
             resource_id=str(user.id),
-            changes=request.data,
+            changes={
+                field: request.data[field]
+                for field in ('role', 'is_active')
+                if field in request.data
+            },
             ip_address=request.META.get('REMOTE_ADDR'),
             user_agent=request.META.get('HTTP_USER_AGENT', '')
         )
@@ -203,16 +271,29 @@ class PlatformAnalyticsView(APIView):
         # Pending alerts
         pending_alerts = FraudAlert.objects.filter(status='pending').count()
 
-        # Growth trends
+        # Growth trends: one grouped aggregate instead of 12 sequential COUNT
+        # round-trips. The old loop also built month boundaries with
+        # .replace(day=1, hour=0, minute=0, second=0), which left microseconds
+        # intact and double-counted across bucket edges.
+        twelve_months_ago = (now - timedelta(days=365)).replace(
+            day=1, hour=0, minute=0, second=0, microsecond=0
+        )
+        monthly_counts = {
+            row['month']: row['new_users']
+            for row in User.objects
+                           .filter(created_at__gte=twelve_months_ago)
+                           .annotate(month=TruncMonth('created_at'))
+                           .values('month')
+                           .annotate(new_users=Count('id'))
+        }
         user_growth = []
-        for i in range(12):
-            month_date = now - timedelta(days=30 * i)
-            month_start = month_date.replace(day=1, hour=0, minute=0, second=0)
-            month_end = (month_start + timedelta(days=32)).replace(day=1)
-            users_in_month = User.objects.filter(created_at__gte=month_start, created_at__lt=month_end).count()
+        for i in range(11, -1, -1):
+            bucket = (now - timedelta(days=30 * i)).replace(
+                day=1, hour=0, minute=0, second=0, microsecond=0
+            )
             user_growth.append({
-                'month': month_start.strftime('%Y-%m'),
-                'new_users': users_in_month
+                'month': bucket.strftime('%Y-%m'),
+                'new_users': monthly_counts.get(bucket, 0),
             })
 
         # Revenue by category
@@ -271,13 +352,18 @@ class FraudMonitoringView(APIView):
                 'message': 'Transaction not found'
             }, status=status.HTTP_404_NOT_FOUND)
 
-        # Check for large transaction
-        if transaction.amount > 10000:
-            FraudAlert.objects.create(
+        # Check for large transaction. get_or_create keeps a repeated manual
+        # trigger from stacking duplicate alerts for the same transaction, and
+        # the threshold is configurable rather than a literal in the view.
+        threshold = getattr(settings, 'FRAUD_LARGE_TRANSACTION_THRESHOLD', Decimal('10000'))
+        if transaction.amount > threshold:
+            FraudAlert.objects.get_or_create(
                 transaction=transaction,
                 alert_type='large_transaction',
-                severity='high',
-                description=f"Large transaction of {transaction.amount} detected"
+                defaults={
+                    'severity': 'high',
+                    'description': f"Large transaction of {transaction.amount} detected",
+                },
             )
 
         return Response({
