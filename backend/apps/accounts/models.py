@@ -52,9 +52,12 @@ class User(AbstractBaseUser, PermissionsMixin):
         return f"{self.email} ({self.role})"
 
     def get_full_name(self):
+        # Catches only a missing/unsaved profile. A bare `except:` also
+        # swallowed KeyboardInterrupt, SystemExit and any genuine database
+        # error, silently returning the email and hiding real faults.
         try:
             return self.profile.full_name
-        except:
+        except (Profile.DoesNotExist, AttributeError):
             return self.email
 
     def get_short_name(self):
