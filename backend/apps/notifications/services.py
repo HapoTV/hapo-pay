@@ -1,6 +1,7 @@
 # apps/notifications/services.py
 from django.core.mail import send_mail
 from django.conf import settings
+from django.db import transaction
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from .models import Notification, NotificationPreference
@@ -15,9 +16,29 @@ class NotificationService:
 
     @staticmethod
     def send_notification(user, title, body, notification_type, metadata=None):
-        """Send notification to user via all enabled channels"""
+        """Persist a notification and deliver it on every enabled channel.
 
-        # Create notification record
+        Two behaviours changed here, both of which broke promised features:
+
+        1. Preferences are created on demand. The old code did
+           `NotificationPreference.objects.get(user=user)` and set prefs=None on
+           DoesNotExist, so email and push were skipped entirely for any user
+           who had never opened the preferences screen -- which is every user,
+           because nothing else creates that row. Both flags default to True,
+           so the intent was clearly for them to fire. get_or_create applies
+           those defaults.
+
+        2. Delivery is deferred to transaction commit. This method is called
+           from inside money-movement transactions that hold select_for_update
+           locks on wallet rows. Sending SMTP mail inline held those locks for
+           the duration of the mail handshake, and a notification sent before a
+           later rollback told the user they had received money that they had
+           not. on_commit means nothing is delivered unless the money actually
+           moved, and a slow mail server can never stall a payment.
+        """
+
+        # Create notification record (in-transaction: it must be consistent
+        # with the financial rows it describes).
         notification = Notification.objects.create(
             user=user,
             title=title,
@@ -26,22 +47,26 @@ class NotificationService:
             metadata=metadata or {}
         )
 
-        # Get user preferences
-        try:
-            prefs = NotificationPreference.objects.get(user=user)
-        except NotificationPreference.DoesNotExist:
-            prefs = None
+        prefs, _ = NotificationPreference.objects.get_or_create(user=user)
 
-        # Send WebSocket (real-time)
-        NotificationService.send_websocket(user.id, notification)
+        user_id = user.id
+        user_email = user.email
+        email_enabled = prefs.email_enabled
+        push_enabled = prefs.push_enabled
 
-        # Send email if enabled
-        if prefs and prefs.email_enabled:
-            NotificationService.send_email(user.email, title, body)
+        def _deliver():
+            # Real-time
+            NotificationService.send_websocket(user_id, notification)
 
-        # Send push notification if enabled
-        if prefs and prefs.push_enabled:
-            NotificationService.send_push_notification(user, title, body, metadata)
+            if email_enabled:
+                NotificationService.send_email(user_email, title, body)
+
+            if push_enabled:
+                NotificationService.send_push_notification(user, title, body, metadata)
+
+        # Outside an atomic block on_commit runs immediately, so this is also
+        # correct for callers that are not in a transaction.
+        transaction.on_commit(_deliver)
 
         return notification
 

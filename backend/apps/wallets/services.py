@@ -1,5 +1,6 @@
 # apps/wallets/services.py
 from django.db import transaction
+from django.db.models import F
 from django.utils import timezone
 from decimal import Decimal
 from apps.payments.fraud_detection import check_transaction, freeze_and_alert
@@ -410,6 +411,29 @@ class WalletService:
             return Wallet.objects.get(user=user).balance
         except Wallet.DoesNotExist:
             raise ValueError("Wallet not found")
+
+
+class AccountStatusService:
+    """Enforces StudentProfile.is_account_frozen.
+
+    The field (and freeze_reason beside it) existed on the model, was exposed
+    read-only through StudentProfileSerializer, and was never written or read
+    by any code path. So the advertised safety control was inert: a frozen
+    student could still spend, because no payment path consulted it. This is
+    the single place that decides, so QR, NFC, airtime, transport and transfer
+    all agree.
+    """
+
+    @staticmethod
+    def assert_can_spend(user):
+        """Raise AccountFrozen if this user is barred from spending."""
+        profile = getattr(user, 'student_profile', None)
+        if profile is not None and profile.is_account_frozen:
+            raise AccountFrozen(profile.freeze_reason or 'This account is frozen.')
+
+
+class AccountFrozen(Exception):
+    """Raised when a frozen account attempts to move money."""
 
 
 class LimitCheckerService:
