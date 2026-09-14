@@ -6,6 +6,7 @@ from django.conf.urls.static import static
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
+from core.health import liveness, readiness
 
 # Swagger/OpenAPI Schema View
 schema_view = get_schema_view(
@@ -17,11 +18,20 @@ schema_view = get_schema_view(
         contact=openapi.Contact(email="support@hapopay.com"),
         license=openapi.License(name="MIT License"),
     ),
-    public=True,
-    permission_classes=(permissions.AllowAny,),
+    # The full API schema was public: an unauthenticated reader got a map of
+    # every money-movement endpoint and its payload shape. Gated on DEBUG so
+    # local development keeps the interactive docs.
+    public=settings.DEBUG,
+    permission_classes=(
+        (permissions.AllowAny,) if settings.DEBUG else (permissions.IsAdminUser,)
+    ),
 )
 
 urlpatterns = [
+    # Health probes (unauthenticated by design; they expose no data)
+    path('health/', liveness, name='health-liveness'),
+    path('health/ready/', readiness, name='health-readiness'),
+
     # Admin
     path('admin/', admin.site.urls),
 
