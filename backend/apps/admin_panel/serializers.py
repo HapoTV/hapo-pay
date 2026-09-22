@@ -7,6 +7,10 @@ from apps.wallets.models import Transaction
 
 
 class SystemConfigSerializer(serializers.ModelSerializer):
+    """
+    Serializer for system configuration entries.
+    Converts SystemConfig model instances to/from JSON for the admin API.
+    """
     class Meta:
         model = SystemConfig
         fields = ('key', 'value', 'description', 'updated_at')
@@ -14,6 +18,10 @@ class SystemConfigSerializer(serializers.ModelSerializer):
 
 
 class AuditLogSerializer(serializers.ModelSerializer):
+    """
+    Read-only serializer for audit log entries.
+    Exposes the user email alongside the user ID for easier reading.
+    """
     user_email = serializers.EmailField(source='user.email', read_only=True)
 
     class Meta:
@@ -24,6 +32,10 @@ class AuditLogSerializer(serializers.ModelSerializer):
 
 
 class FraudAlertSerializer(serializers.ModelSerializer):
+    """
+    Serializer for fraud alerts.
+    Includes nested transaction details and reviewer info for admin use.
+    """
     transaction_details = serializers.SerializerMethodField()
     user_email = serializers.EmailField(source='user.email', read_only=True)
     reviewed_by_email = serializers.EmailField(
@@ -46,16 +58,27 @@ class FraudAlertSerializer(serializers.ModelSerializer):
         )
 
     def get_transaction_details(self, obj):
-        return {
-            'amount': obj.transaction.amount,
-            'type': obj.transaction.type,
-            'status': obj.transaction.status,
-            'created_at': obj.transaction.created_at,
-            'merchant': obj.transaction.merchant_name,
-        }
+        """
+        Return a nested snapshot of the transaction that triggered this alert.
+        Wrapped in try/except because the transaction may have been deleted.
+        """
+        try:
+            return {
+                'amount': obj.transaction.amount,
+                'type': obj.transaction.type,
+                'status': obj.transaction.status,
+                'created_at': obj.transaction.created_at,
+                'merchant': obj.transaction.merchant_name,
+            }
+        except Exception:
+            return None
 
 
 class UserManagementSerializer(serializers.ModelSerializer):
+    """
+    Serializer for admin user listing.
+    Includes the user's profile name alongside core account fields.
+    """
     profile_name = serializers.CharField(
         source='profile.full_name', read_only=True, default=None
     )
@@ -70,6 +93,10 @@ class UserManagementSerializer(serializers.ModelSerializer):
 
 
 class PlatformAnalyticsSerializer(serializers.Serializer):
+    """
+    Serializer for platform-wide analytics values returned by the analytics view.
+    Not tied to a single model — used purely for response shape and validation.
+    """
     total_users = serializers.IntegerField()
     total_transactions = serializers.IntegerField()
     total_volume = serializers.DecimalField(max_digits=15, decimal_places=2)

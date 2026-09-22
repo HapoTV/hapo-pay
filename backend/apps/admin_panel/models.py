@@ -5,6 +5,11 @@ import uuid
 
 
 class SystemConfig(models.Model):
+    """
+    Stores system-wide configuration key-value pairs.
+    Used for feature flags, limits, and runtime settings that admins
+    can change without redeploying the application.
+    """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     key = models.CharField(max_length=100, unique=True)
     value = models.TextField()
@@ -20,6 +25,11 @@ class SystemConfig(models.Model):
 
 
 class AuditLog(models.Model):
+    """
+    Immutable record of every significant action performed in the system.
+    Used for security audits, debugging, and compliance.
+    Never update or delete these records.
+    """
     ACTION_CHOICES = [
         ('create', 'Create'),
         ('update', 'Update'),
@@ -49,44 +59,6 @@ class AuditLog(models.Model):
         return f"{self.user.email if self.user else 'Anonymous'} - {self.action} - {self.created_at}"
 
 
-# class FraudAlert(models.Model):
-#     ALERT_TYPES = [
-#         ('large_transaction', 'Large Transaction'),
-#         ('unusual_pattern', 'Unusual Pattern'),
-#         ('multiple_failures', 'Multiple Failures'),
-#         ('suspicious_merchant', 'Suspicious Merchant',
-#         ('location_mismatch', 'Location Mismatch'),
-#     ]
-
-#     SEVERITY_CHOICES = [
-#         ('low', 'Low'),
-#         ('medium', 'Medium'),
-#         ('high', 'High'),
-#         ('critical', 'Critical'),
-#     ]
-
-#     STATUS_CHOICES = [
-#         ('pending', 'Pending Review'),
-#         ('investigating', 'Under Investigation'),
-#         ('confirmed', 'Confirmed Fraud'),
-#         ('false_positive', 'False Positive'),
-#         ('resolved', 'Resolved'),
-#     ]
-
-#     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-#     transaction = models.ForeignKey('wallets.Transaction', on_delete=models.CASCADE, related_name='fraud_alerts')
-#     alert_type = models.CharField(max_length=30, choices=ALERT_TYPES)
-#     severity = models.CharField(max_length=10, choices=SEVERITY_CHOICES)
-#     description = models.TextField()
-#     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-#     resolved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
-#     resolution_notes = models.TextField(blank=True)
-#     created_at = models.DateTimeField(auto_now_add=True)
-#     resolved_at = models.DateTimeField(null=True, blank=True)
-
-#     class Meta:
-#         db_table = 'fraud_alerts'
-#         ordering = ['-severity', '-created_at']
-
-#     def __str__(self):
-#         return f"{self.alert_type} - {self.severity} - {self.transaction.id}"
+# NOTE: The FraudAlert model is defined in apps/payments/models.py
+# because fraud detection is a payments concern. Admin panel views
+# import it from there.

@@ -1,0 +1,40 @@
+Metadata-Version: 2.4
+Name: types-PyYAML
+Version: 6.0.12.20260906
+Summary: Typing stubs for PyYAML
+License-Expression: Apache-2.0
+Project-URL: Homepage, https://github.com/python/typeshed
+Project-URL: GitHub, https://github.com/python/typeshed
+Project-URL: Changes, https://github.com/typeshed-internal/stub_uploader/blob/main/data/changelogs/PyYAML.md
+Project-URL: Issue tracker, https://github.com/python/typeshed/issues
+Project-URL: Chat, https://gitter.im/python/typing
+Classifier: Programming Language :: Python :: 3
+Classifier: Typing :: Stubs Only
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Dynamic: license-file
+
+## Typing stubs for PyYAML
+
+This is a [type stub package](https://typing.python.org/en/latest/tutorials/external_libraries.html)
+for the [`PyYAML`](https://github.com/yaml/pyyaml) package. It can be used by type checkers
+to check code that uses `PyYAML`. This version of
+`types-PyYAML` aims to provide accurate annotations for
+`PyYAML==6.0.*`.
+
+This package is part of the [typeshed project](https://github.com/python/typeshed).
+All fixes for types and metadata should be contributed there.
+See [the README](https://github.com/python/typeshed/blob/main/README.md)
+for more details. The source for this package can be found in the
+[`stubs/PyYAML`](https://github.com/python/typeshed/tree/main/stubs/PyYAML)
+directory.
+
+This package was tested with the following type checkers:
+* [mypy](https://www.mypy-lang.org/) 2.3.0
+* [pyrefly](https://pyrefly.org/) 1.3.0.dev1
+* [pyright](https://microsoft.github.io/pyright/) 1.1.411
+* [ty](https://docs.astral.sh/ty/) 0.0.59
+
+It was generated from typeshed commit
+[`dfb509fb0e8a5178b457c40e3ab68d685ee269e2`](https://github.com/python/typeshed/commit/dfb509fb0e8a5178b457c40e3ab68d685ee269e2).

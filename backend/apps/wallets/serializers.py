@@ -1,11 +1,21 @@
 # apps/wallets/serializers.py
+"""
+Wallets App Serializers
+=======================
+DRF serializers for all wallets models plus request-only serializers
+used by views (transfer, limits, money requests, children, freeze).
+"""
 from rest_framework import serializers
 from django.utils import timezone
 from .models import Wallet, Transaction, SpendingLimit, MoneyRequest
 from apps.accounts.models import User
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class WalletSerializer(serializers.ModelSerializer):
+    """Read-only serialization of a Wallet with the owner's email."""
     user_email = serializers.EmailField(source='user.email', read_only=True)
 
     class Meta:
@@ -15,6 +25,7 @@ class WalletSerializer(serializers.ModelSerializer):
 
 
 class TransactionSerializer(serializers.ModelSerializer):
+    """Read-only serialization of a Transaction."""
     user_email = serializers.EmailField(source='user.email', read_only=True)
 
     class Meta:
@@ -22,10 +33,12 @@ class TransactionSerializer(serializers.ModelSerializer):
         fields = ('id', 'user', 'user_email', 'amount', 'type', 'category', 'status',
                   'description', 'merchant_name', 'merchant_id', 'reference_id',
                   'metadata', 'is_flagged', 'fraud_reasons', 'created_at')
-        read_only_fields = ('id', 'user', 'created_at', 'updated_at', 'is_flagged', 'fraud_reasons')
+        read_only_fields = ('id', 'user', 'created_at', 'updated_at',
+                            'is_flagged', 'fraud_reasons')
 
 
 class SpendingLimitSerializer(serializers.ModelSerializer):
+    """Read-only serialization of a SpendingLimit with denormalized emails."""
     child_email = serializers.EmailField(source='child.email', read_only=True)
     parent_email = serializers.EmailField(source='parent.email', read_only=True)
 
@@ -34,10 +47,12 @@ class SpendingLimitSerializer(serializers.ModelSerializer):
         fields = ('id', 'child', 'child_email', 'parent', 'parent_email', 'category',
                   'daily_limit', 'weekly_limit', 'monthly_limit', 'daily_spent',
                   'weekly_spent', 'monthly_spent', 'is_enabled', 'created_at')
-        read_only_fields = ('id', 'child', 'parent', 'daily_spent', 'weekly_spent', 'monthly_spent')
+        read_only_fields = ('id', 'child', 'parent', 'daily_spent',
+                            'weekly_spent', 'monthly_spent')
 
 
 class MoneyRequestSerializer(serializers.ModelSerializer):
+    """Serialization of a MoneyRequest with full names for display."""
     child_name = serializers.CharField(source='child.profile.full_name', read_only=True)
     parent_name = serializers.CharField(source='parent.profile.full_name', read_only=True)
 
@@ -49,12 +64,20 @@ class MoneyRequestSerializer(serializers.ModelSerializer):
 
 
 class TransferFundsSerializer(serializers.Serializer):
+    """
+    Input serializer for POST /transfer/.
+    Validates recipient UUID and positive amount.
+    """
     recipient_id = serializers.UUIDField()
     amount = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=0.01)
-    description = serializers.CharField(max_length=255, required=False)
+    description = serializers.CharField(max_length=255, required=False, allow_blank=True)
 
 
 class UpdateSpendingLimitSerializer(serializers.Serializer):
+    """
+    Input serializer for creating/updating a SpendingLimit.
+    All three thresholds must be provided (0 disables a given window).
+    """
     category = serializers.ChoiceField(choices=Transaction.CATEGORY_CHOICES)
     daily_limit = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=0)
     weekly_limit = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=0)
@@ -63,36 +86,53 @@ class UpdateSpendingLimitSerializer(serializers.Serializer):
 
 
 class CreateMoneyRequestSerializer(serializers.Serializer):
+    """Input serializer for creating a MoneyRequest (student side)."""
     amount = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=0.01)
     reason = serializers.CharField(max_length=500)
 
 
 class ApproveMoneyRequestSerializer(serializers.Serializer):
+    """Input serializer for approving/declining a MoneyRequest (parent side)."""
     request_id = serializers.UUIDField()
     action = serializers.ChoiceField(choices=['approve', 'decline'])
-    parent_notes = serializers.CharField(max_length=500, required=False)
+    parent_notes = serializers.CharField(max_length=500, required=False, allow_blank=True)
 
 
 class AddChildSerializer(serializers.Serializer):
+    """
+    Input serializer for POST /children/.
+    Creates a student User, Profile, StudentProfile, and Wallet.
+    """
     email = serializers.EmailField()
     full_name = serializers.CharField(max_length=255)
     grade = serializers.IntegerField(min_value=1, max_value=12, required=False)
-    school_name = serializers.CharField(max_length=200, required=False)
-    weekly_allowance = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=0, required=False)
+    school_name = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    weekly_allowance = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=0, required=False
+    )
 
 
 class ChildSummarySerializer(serializers.ModelSerializer):
+    """
+    Compact representation of a child user for the parent dashboard:
+    name, email, grade, balance, freeze status.
+    """
     full_name = serializers.CharField(source='profile.full_name', read_only=True)
     school_name = serializers.CharField(source='student_profile.school_name', read_only=True)
     grade = serializers.IntegerField(source='student_profile.grade', read_only=True)
-    wallet_balance = serializers.DecimalField(source='wallet.balance', read_only=True, max_digits=12, decimal_places=2)
-    is_account_frozen = serializers.BooleanField(source='student_profile.is_account_frozen', read_only=True)
+    wallet_balance = serializers.DecimalField(
+        source='wallet.balance', read_only=True, max_digits=12, decimal_places=2
+    )
+    is_account_frozen = serializers.BooleanField(
+        source='student_profile.is_account_frozen', read_only=True
+    )
 
     class Meta:
         model = User
-        fields = ('id', 'email', 'full_name', 'grade', 'school_name', 'wallet_balance', 'is_account_frozen',
-                  'created_at')
+        fields = ('id', 'email', 'full_name', 'grade', 'school_name',
+                  'wallet_balance', 'is_account_frozen', 'created_at')
 
 
 class FreezeAccountSerializer(serializers.Serializer):
+    """Input serializer for freezing a child's account with a mandatory reason."""
     freeze_reason = serializers.CharField(max_length=500)

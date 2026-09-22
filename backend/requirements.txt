@@ -48,3 +48,6 @@ pytest-django==4.7.0
 factory-boy==3.3.0
 faker==20.0.3
 coverage==7.4.0
+
+# Redis
+django-redis==5.4.0

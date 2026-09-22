@@ -1,10 +1,20 @@
 # apps/notifications/models.py
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class Notification(models.Model):
+    """
+    Model representing a notification sent to a user.
+
+    Notifications can be of various types (transaction, transfer, alerts, etc.)
+    and are used to inform users about important events in the HapoPay system.
+    """
     NOTIFICATION_TYPES = [
         ('transaction', 'Transaction'),
         ('transfer', 'Transfer'),
@@ -19,7 +29,11 @@ class Notification(models.Model):
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications')
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='notifications'
+    )
     title = models.CharField(max_length=200)
     body = models.TextField()
     notification_type = models.CharField(max_length=30, choices=NOTIFICATION_TYPES)
@@ -37,19 +51,44 @@ class Notification(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.user.email} - {self.title}"
+        """Return a human-readable representation of the notification."""
+        try:
+            return f"{self.user.email} - {self.title}"
+        except Exception as e:
+            logger.error(f"Error in Notification.__str__: {str(e)}")
+            return f"Notification {self.id}"
 
     def mark_as_read(self):
-        from django.utils import timezone
-        self.is_read = True
-        self.read_at = timezone.now()
-        self.save()
+        """
+        Mark this notification as read and record the timestamp.
+
+        Returns:
+            bool: True if successful, False otherwise.
+        """
+        try:
+            self.is_read = True
+            self.read_at = timezone.now()
+            self.save(update_fields=['is_read', 'read_at'])
+            logger.info(f"Notification {self.id} marked as read for user {self.user.email}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to mark notification {self.id} as read: {str(e)}")
+            return False
 
 
 class NotificationPreference(models.Model):
+    """
+    Model storing user preferences for receiving notifications.
+
+    Controls whether notifications are sent via email, push, or SMS,
+    and which categories of notifications the user wants to receive.
+    """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
-                                related_name='notification_preferences')
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='notification_preferences'
+    )
     email_enabled = models.BooleanField(default=True)
     push_enabled = models.BooleanField(default=True)
     sms_enabled = models.BooleanField(default=False)
@@ -63,4 +102,9 @@ class NotificationPreference(models.Model):
         db_table = 'notification_preferences'
 
     def __str__(self):
-        return f"Preferences for {self.user.email}"
+        """Return a human-readable representation of the preferences."""
+        try:
+            return f"Preferences for {self.user.email}"
+        except Exception as e:
+            logger.error(f"Error in NotificationPreference.__str__: {str(e)}")
+            return f"Preferences {self.id}"

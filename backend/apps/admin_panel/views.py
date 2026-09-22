@@ -12,6 +12,10 @@ from .serializers import (
     SystemConfigSerializer, AuditLogSerializer, FraudAlertSerializer,
     UserManagementSerializer, PlatformAnalyticsSerializer
 )
+from .services import (
+    AuditLogService, UserManagementService, MerchantVerificationService,
+    FraudAlertService, AnalyticsService
+)
 from apps.payments.serializers import MerchantSerializer
 from core.permissions import IsAdmin
 from apps.accounts.models import User
@@ -24,108 +28,179 @@ logger = logging.getLogger(__name__)
 
 
 class SystemConfigViewSet(viewsets.ModelViewSet):
-    """Manage system configuration"""
+    """
+    CRUD endpoint for system configuration.
+    Admin only.
+
+    GET    /admin/config/          — list all config entries
+    POST   /admin/config/          — create a new config entry
+    GET    /admin/config/<key>/    — retrieve config by key
+    PUT    /admin/config/<key>/    — update a config entry
+    DELETE /admin/config/<key>/    — delete a config entry
+    """
     queryset = SystemConfig.objects.all()
     serializer_class = SystemConfigSerializer
     permission_classes = [IsAuthenticated, IsAdmin]
 
+    def list(self, request, *args, **kwargs):
+        """List all system configs. Wrapped for error handling."""
+        try:
+            return super().list(request, *args, **kwargs)
+        except Exception as e:
+            logger.exception("SystemConfig list failed")
+            return Response(
+                {'status': 'error', 'message': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 
 class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
-    """View audit logs"""
+    """
+    Read-only endpoint for audit logs with filtering.
+    Admin only.
+
+    GET /admin/audit-logs/                — list all logs
+    GET /admin/audit-logs/?user=<id>      — filter by user
+    GET /admin/audit-logs/?action=login   — filter by action
+    GET /admin/audit-logs/?start_date=... — filter by date range
+    """
     queryset = AuditLog.objects.all()
     serializer_class = AuditLogSerializer
     permission_classes = [IsAuthenticated, IsAdmin]
 
     def get_queryset(self):
-        queryset = super().get_queryset()
-        user_id   = self.request.query_params.get('user')
-        action    = self.request.query_params.get('action')
-        start_date = self.request.query_params.get('start_date')
-        end_date   = self.request.query_params.get('end_date')
+        """
+        Apply optional query-parameter filters to the audit log queryset.
+        Wrapped in try/except so a malformed filter doesn't 500 the endpoint.
+        """
+        try:
+            queryset = super().get_queryset()
+            user_id    = self.request.query_params.get('user')
+            action     = self.request.query_params.get('action')
+            start_date = self.request.query_params.get('start_date')
+            end_date   = self.request.query_params.get('end_date')
 
-        if user_id:
-            queryset = queryset.filter(user_id=user_id)
-        if action:
-            queryset = queryset.filter(action=action)
-        if start_date:
-            queryset = queryset.filter(created_at__gte=start_date)
-        if end_date:
-            queryset = queryset.filter(created_at__lte=end_date)
-        return queryset
+            if user_id:
+                queryset = queryset.filter(user_id=user_id)
+            if action:
+                queryset = queryset.filter(action=action)
+            if start_date:
+                queryset = queryset.filter(created_at__gte=start_date)
+            if end_date:
+                queryset = queryset.filter(created_at__lte=end_date)
+            return queryset
+        except Exception as e:
+            logger.error(f"Audit log filtering failed: {e}")
+            return AuditLog.objects.none()
 
 
 class FraudAlertViewSet(viewsets.ModelViewSet):
-    """Manage fraud alerts — list, filter, and action"""
+    """
+    Admin endpoint for managing fraud alerts.
+
+    GET    /admin/fraud-alerts/              — list alerts
+    GET    /admin/fraud-alerts/?status=...   — filter by status
+    GET    /admin/fraud-alerts/?severity=... — filter by severity
+    PUT    /admin/fraud-alerts/<id>/         — update an alert (review)
+    """
     queryset = FraudAlert.objects.all()
     serializer_class = FraudAlertSerializer
     permission_classes = [IsAuthenticated, IsAdmin]
 
     def get_queryset(self):
-        queryset = super().get_queryset().select_related(
-            'transaction', 'user', 'reviewed_by'
-        )
-        status_filter   = self.request.query_params.get('status')
-        severity_filter = self.request.query_params.get('severity')
+        """
+        Filter fraud alerts by status/severity and prefetch related objects.
+        """
+        try:
+            queryset = super().get_queryset().select_related(
+                'transaction', 'user', 'reviewed_by'
+            )
+            status_filter   = self.request.query_params.get('status')
+            severity_filter = self.request.query_params.get('severity')
 
-        if status_filter:
-            queryset = queryset.filter(status=status_filter)
-        if severity_filter:
-            queryset = queryset.filter(severity=severity_filter)
-        return queryset
+            if status_filter:
+                queryset = queryset.filter(status=status_filter)
+            if severity_filter:
+                queryset = queryset.filter(severity=severity_filter)
+            return queryset
+        except Exception as e:
+            logger.error(f"Fraud alert filtering failed: {e}")
+            return FraudAlert.objects.none()
 
     def update(self, request, *args, **kwargs):
-        partial  = kwargs.pop('partial', False)
-        instance = self.get_object()
-        serializer = self.get_serializer(
-            instance, data=request.data, partial=partial
-        )
-        serializer.is_valid(raise_exception=True)
+        """
+        Review a fraud alert. Delegates all status-changing logic and
+        transaction-unfreezing to FraudAlertService.
+        """
+        try:
+            partial = kwargs.pop('partial', False)
+            instance = self.get_object()
 
-        new_status = request.data.get('status')
-        if new_status and new_status != instance.status:
-            instance.reviewed_by = request.user
-            instance.reviewed_at = timezone.now()
+            new_status = request.data.get('status')
+            review_notes = request.data.get('review_notes', '')
 
-            # Unfreeze transaction if cleared as false positive
-            if new_status == 'false_positive':
-                txn = instance.transaction
-                txn.status    = 'completed'
-                txn.is_flagged = False
-                txn.save(update_fields=['status', 'is_flagged', 'updated_at'])
+            if new_status and new_status != instance.status:
+                FraudAlertService.update_alert(
+                    alert=instance,
+                    new_status=new_status,
+                    reviewer=request.user,
+                    review_notes=review_notes,
+                    request=request,
+                )
+                # Refresh instance from DB to get latest state
+                instance.refresh_from_db()
 
-        self.perform_update(serializer)
-        instance.save(update_fields=['reviewed_by', 'reviewed_at'])
-        return Response(serializer.data)
+            serializer = self.get_serializer(instance)
+            return Response(serializer.data)
+        except Exception as e:
+            logger.exception("Failed to update fraud alert")
+            return Response(
+                {'status': 'error', 'message': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 
 class UserManagementView(APIView):
     """
-    GET  /admin/users/              — list all users with filters
-    PUT  /admin/users/<id>/         — update role or is_active
-    POST /admin/users/<id>/suspend/ — suspend user
-    POST /admin/users/<id>/activate/— activate user
-    DELETE /admin/users/<id>/       — delete user
+    Admin user management endpoints.
+
+    GET    /admin/users/                 — list all users with filters
+    PUT    /admin/users/<id>/            — update role or is_active
+    DELETE /admin/users/<id>/            — delete user
     """
     permission_classes = [IsAuthenticated, IsAdmin]
 
     def get(self, request):
-        users = User.objects.all()
+        """
+        List users with optional role, active status, and search filters.
+        """
+        try:
+            users = User.objects.all()
 
-        role      = request.query_params.get('role')
-        is_active = request.query_params.get('is_active')
-        search    = request.query_params.get('search')
+            role      = request.query_params.get('role')
+            is_active = request.query_params.get('is_active')
+            search    = request.query_params.get('search')
 
-        if role:
-            users = users.filter(role=role)
-        if is_active is not None:
-            users = users.filter(is_active=is_active.lower() == 'true')
-        if search:
-            users = users.filter(email__icontains=search)
+            if role:
+                users = users.filter(role=role)
+            if is_active is not None:
+                users = users.filter(is_active=is_active.lower() == 'true')
+            if search:
+                users = users.filter(email__icontains=search)
 
-        serializer = UserManagementSerializer(users, many=True)
-        return Response({'status': 'success', 'data': serializer.data})
+            serializer = UserManagementSerializer(users, many=True)
+            return Response({'status': 'success', 'data': serializer.data})
+        except Exception as e:
+            logger.exception("User list failed")
+            return Response(
+                {'status': 'error', 'message': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def put(self, request, user_id):
+        """
+        Update a user's role and/or active status via UserManagementService.
+        """
         try:
             user = User.objects.get(id=user_id)
         except User.DoesNotExist:
@@ -133,17 +208,37 @@ class UserManagementView(APIView):
                 {'status': 'error', 'message': 'User not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
+        except Exception as e:
+            logger.exception("User lookup failed")
+            return Response(
+                {'status': 'error', 'message': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
-        if 'role' in request.data:
-            user.role = request.data['role']
-        if 'is_active' in request.data:
-            user.is_active = request.data['is_active']
-        user.save()
-
-        self._log_action(request, 'update_user', user)
-        return Response({'status': 'success', 'message': 'User updated successfully'})
+        try:
+            UserManagementService.update_user(
+                user=user,
+                data=request.data,
+                actor=request.user,
+                request=request,
+            )
+            return Response({'status': 'success', 'message': 'User updated successfully'})
+        except ValueError as e:
+            return Response(
+                {'status': 'error', 'message': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            logger.exception("User update failed")
+            return Response(
+                {'status': 'error', 'message': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def delete(self, request, user_id):
+        """
+        Delete a user via UserManagementService (logs the action).
+        """
         try:
             user = User.objects.get(id=user_id)
         except User.DoesNotExist:
@@ -151,27 +246,37 @@ class UserManagementView(APIView):
                 {'status': 'error', 'message': 'User not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
-        self._log_action(request, 'delete_user', user)
-        user.delete()
-        return Response(
-            {'status': 'success', 'message': 'User deleted successfully'},
-            status=status.HTTP_204_NO_CONTENT
-        )
+        except Exception as e:
+            logger.exception("User lookup failed")
+            return Response(
+                {'status': 'error', 'message': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
-    def _log_action(self, request, action, user):
-        AuditLog.objects.create(
-            user=request.user,
-            action=action,
-            resource_type='user',
-            resource_id=str(user.id),
-            changes=request.data,
-            ip_address=request.META.get('REMOTE_ADDR'),
-            user_agent=request.META.get('HTTP_USER_AGENT', '')
-        )
+        try:
+            UserManagementService.delete_user(user, request=request)
+            return Response(
+                {'status': 'success', 'message': 'User deleted successfully'},
+                status=status.HTTP_204_NO_CONTENT
+            )
+        except ValueError as e:
+            return Response(
+                {'status': 'error', 'message': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            logger.exception("User delete failed")
+            return Response(
+                {'status': 'error', 'message': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class UserSuspendView(APIView):
-    """POST /admin/users/<id>/suspend/"""
+    """
+    POST /admin/users/<id>/suspend/
+    Deactivate a user account.
+    """
     permission_classes = [IsAuthenticated, IsAdmin]
 
     def post(self, request, user_id):
@@ -183,23 +288,28 @@ class UserSuspendView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        user.is_active = False
-        user.save(update_fields=['is_active'])
-
-        AuditLog.objects.create(
-            user=request.user,
-            action='suspend_user',
-            resource_type='user',
-            resource_id=str(user.id),
-            changes={'reason': request.data.get('reason', '')},
-            ip_address=request.META.get('REMOTE_ADDR'),
-            user_agent=request.META.get('HTTP_USER_AGENT', '')
-        )
-        return Response({'status': 'success', 'message': 'User suspended successfully'})
+        try:
+            reason = request.data.get('reason', '')
+            UserManagementService.suspend_user(user, reason, request=request)
+            return Response({'status': 'success', 'message': 'User suspended successfully'})
+        except ValueError as e:
+            return Response(
+                {'status': 'error', 'message': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            logger.exception("User suspend failed")
+            return Response(
+                {'status': 'error', 'message': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class UserActivateView(APIView):
-    """POST /admin/users/<id>/activate/"""
+    """
+    POST /admin/users/<id>/activate/
+    Reactivate a user account.
+    """
     permission_classes = [IsAuthenticated, IsAdmin]
 
     def post(self, request, user_id):
@@ -211,35 +321,49 @@ class UserActivateView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        user.is_active = True
-        user.save(update_fields=['is_active'])
-
-        AuditLog.objects.create(
-            user=request.user,
-            action='activate_user',
-            resource_type='user',
-            resource_id=str(user.id),
-            changes={},
-            ip_address=request.META.get('REMOTE_ADDR'),
-            user_agent=request.META.get('HTTP_USER_AGENT', '')
-        )
-        return Response({'status': 'success', 'message': 'User activated successfully'})
+        try:
+            UserManagementService.activate_user(user, request=request)
+            return Response({'status': 'success', 'message': 'User activated successfully'})
+        except ValueError as e:
+            return Response(
+                {'status': 'error', 'message': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            logger.exception("User activate failed")
+            return Response(
+                {'status': 'error', 'message': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class MerchantVerificationView(APIView):
     """
-    GET  /admin/merchants/pending/          — list unverified merchants
-    POST /admin/merchants/<id>/verify/      — verify a merchant
-    POST /admin/merchants/<id>/reject/      — reject a merchant
+    Admin merchant verification endpoints.
+
+    GET  /admin/merchants/pending/        — list unverified merchants
+    POST /admin/merchants/<id>/verify/    — verify or reject a merchant
     """
     permission_classes = [IsAuthenticated, IsAdmin]
 
     def get(self, request):
-        merchants = Merchant.objects.filter(verified=False).order_by('-created_at')
-        serializer = MerchantSerializer(merchants, many=True)
-        return Response({'status': 'success', 'data': serializer.data})
+        """List all merchants awaiting verification."""
+        try:
+            merchants = Merchant.objects.filter(verified=False).order_by('-created_at')
+            serializer = MerchantSerializer(merchants, many=True)
+            return Response({'status': 'success', 'data': serializer.data})
+        except Exception as e:
+            logger.exception("Merchant list failed")
+            return Response(
+                {'status': 'error', 'message': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def post(self, request, merchant_id):
+        """
+        Verify or reject a merchant.
+        The `action` field in the body determines which path to take.
+        """
         try:
             merchant = Merchant.objects.get(id=merchant_id)
         except Merchant.DoesNotExist:
@@ -248,146 +372,149 @@ class MerchantVerificationView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        action = request.data.get('action', 'verify')  # verify | reject
+        try:
+            action = request.data.get('action', 'verify')
+            if action == 'verify':
+                MerchantVerificationService.verify_merchant(
+                    merchant, request.user, request=request
+                )
+                message = 'Merchant verified successfully'
+            else:
+                MerchantVerificationService.reject_merchant(merchant, request=request)
+                message = 'Merchant rejected'
 
-        if action == 'verify':
-            merchant.verified    = True
-            merchant.verified_by = request.user
-            merchant.verified_at = timezone.now()
-            merchant.save(update_fields=['verified', 'verified_by', 'verified_at'])
-            message = 'Merchant verified successfully'
-        else:
-            merchant.verified = False
-            merchant.save(update_fields=['verified'])
-            message = 'Merchant rejected'
-
-        AuditLog.objects.create(
-            user=request.user,
-            action=f'{action}_merchant',
-            resource_type='merchant',
-            resource_id=str(merchant.id),
-            changes={'action': action},
-            ip_address=request.META.get('REMOTE_ADDR'),
-            user_agent=request.META.get('HTTP_USER_AGENT', '')
-        )
-        return Response({'status': 'success', 'message': message})
+            return Response({'status': 'success', 'message': message})
+        except ValueError as e:
+            return Response(
+                {'status': 'error', 'message': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            logger.exception("Merchant action failed")
+            return Response(
+                {'status': 'error', 'message': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class PlatformAnalyticsView(APIView):
-    """GET /admin/analytics/ — platform-wide stats"""
+    """
+    GET /admin/analytics/
+    Platform-wide statistics for the admin dashboard.
+    """
     permission_classes = [IsAuthenticated, IsAdmin]
 
     def get(self, request):
-        period = request.query_params.get('period', 'month')
-        now = timezone.now()
+        try:
+            period = request.query_params.get('period', 'month')
+            data = AnalyticsService.get_platform_analytics(period=period)
 
-        if period == 'week':
-            start_date = now - timedelta(days=7)
-        elif period == 'year':
-            start_date = now - timedelta(days=365)
-        else:
-            start_date = now - timedelta(days=30)
+            # Add 12-month growth + revenue breakdown (only in view; service
+            # could be extended later but keeps primary metrics focused)
+            now = timezone.now()
+            user_growth = []
+            for i in range(12):
+                month_date = now - timedelta(days=30 * i)
+                month_start = month_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+                month_end = (month_start + timedelta(days=32)).replace(day=1)
+                count = User.objects.filter(
+                    created_at__gte=month_start,
+                    created_at__lt=month_end
+                ).count()
+                user_growth.append({
+                    'month': month_start.strftime('%Y-%m'),
+                    'new_users': count
+                })
 
-        total_users       = User.objects.count()
-        active_users      = User.objects.filter(
-            last_login__gte=start_date, is_active=True
-        ).count()
+            revenue_by_category = list(
+                Transaction.objects.filter(
+                    type='payment',
+                    created_at__gte=now - timedelta(days=30)
+                ).values('category').annotate(total=Sum('amount')).order_by('-total')
+            )
 
-        transactions      = Transaction.objects.filter(created_at__gte=start_date)
-        total_transactions = transactions.count()
-        total_volume      = transactions.aggregate(
-            total=Sum('amount')
-        )['total'] or 0
-        pending_alerts    = FraudAlert.objects.filter(status='pending').count()
+            data['user_growth'] = user_growth
+            data['revenue_by_category'] = revenue_by_category
 
-        # Monthly user growth (last 12 months)
-        user_growth = []
-        for i in range(12):
-            month_date  = now - timedelta(days=30 * i)
-            month_start = month_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-            month_end   = (month_start + timedelta(days=32)).replace(day=1)
-            count = User.objects.filter(
-                created_at__gte=month_start,
-                created_at__lt=month_end
-            ).count()
-            user_growth.append({
-                'month': month_start.strftime('%Y-%m'),
-                'new_users': count
-            })
-
-        revenue_by_category = list(
-            Transaction.objects.filter(
-                type='payment', created_at__gte=start_date
-            ).values('category').annotate(total=Sum('amount')).order_by('-total')
-        )
-
-        return Response({
-            'status': 'success',
-            'data': {
-                'period':               period,
-                'total_users':          total_users,
-                'active_users':         active_users,
-                'total_transactions':   total_transactions,
-                'total_volume':         total_volume,
-                'pending_alerts':       pending_alerts,
-                'user_growth':          user_growth,
-                'revenue_by_category':  revenue_by_category,
-            }
-        })
+            return Response({'status': 'success', 'data': data})
+        except Exception as e:
+            logger.exception("Analytics failed")
+            return Response(
+                {'status': 'error', 'message': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class FraudMonitoringView(APIView):
     """
-    GET  /admin/fraud-monitoring/ — high risk pending alerts
+    GET  /admin/fraud-monitoring/ — high-risk pending alerts
     POST /admin/fraud-monitoring/ — manually re-run fraud engine on a transaction
     """
     permission_classes = [IsAuthenticated, IsAdmin]
 
     def get(self, request):
-        high_risk_alerts = FraudAlert.objects.filter(
-            severity__in=['high', 'critical'],
-            status='pending'
-        ).select_related('transaction', 'user').order_by('-created_at')[:20]
-
-        serializer = FraudAlertSerializer(high_risk_alerts, many=True)
-        return Response({
-            'status': 'success',
-            'data': {
-                'high_risk_alerts': serializer.data,
-                'total_pending': FraudAlert.objects.filter(status='pending').count(),
-            }
-        })
-
-    def post(self, request):
-        """Manually re-run the fraud engine on an existing transaction"""
-        transaction_id = request.data.get('transaction_id')
-
+        """Return top high/critical pending fraud alerts."""
         try:
-            txn = Transaction.objects.get(id=transaction_id)
-        except Transaction.DoesNotExist:
-            return Response(
-                {'status': 'error', 'message': 'Transaction not found'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            high_risk_alerts = FraudAlert.objects.filter(
+                severity__in=['high', 'critical'],
+                status='pending'
+            ).select_related('transaction', 'user').order_by('-created_at')[:20]
 
-        if txn.status == 'frozen':
-            return Response(
-                {'status': 'error', 'message': 'Transaction is already frozen'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        is_suspicious, reasons, severity, alert_type = check_transaction(txn, txn.user)
-
-        if is_suspicious:
-            freeze_and_alert(txn, reasons, severity, alert_type)
+            serializer = FraudAlertSerializer(high_risk_alerts, many=True)
             return Response({
                 'status': 'success',
-                'message': 'Transaction flagged and frozen',
-                'data': {'reasons': reasons, 'severity': severity}
+                'data': {
+                    'high_risk_alerts': serializer.data,
+                    'total_pending': FraudAlert.objects.filter(status='pending').count(),
+                }
             })
+        except Exception as e:
+            logger.exception("Fraud monitoring GET failed")
+            return Response(
+                {'status': 'error', 'message': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
-        return Response({
-            'status': 'success',
-            'message': 'No fraud indicators found',
-            'data': {'reasons': []}
-        })
+    def post(self, request):
+        """
+        Re-run the fraud engine on an existing transaction.
+        Useful when rules have changed or admin suspects something was missed.
+        """
+        try:
+            transaction_id = request.data.get('transaction_id')
+
+            try:
+                txn = Transaction.objects.get(id=transaction_id)
+            except Transaction.DoesNotExist:
+                return Response(
+                    {'status': 'error', 'message': 'Transaction not found'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            if txn.status == 'frozen':
+                return Response(
+                    {'status': 'error', 'message': 'Transaction is already frozen'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            is_suspicious, reasons, severity, alert_type = check_transaction(txn, txn.user)
+
+            if is_suspicious:
+                freeze_and_alert(txn, reasons, severity, alert_type)
+                return Response({
+                    'status': 'success',
+                    'message': 'Transaction flagged and frozen',
+                    'data': {'reasons': reasons, 'severity': severity}
+                })
+
+            return Response({
+                'status': 'success',
+                'message': 'No fraud indicators found',
+                'data': {'reasons': []}
+            })
+        except Exception as e:
+            logger.exception("Fraud monitoring POST failed")
+            return Response(
+                {'status': 'error', 'message': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
