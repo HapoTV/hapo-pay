@@ -15,7 +15,6 @@ interface SafetyAlertProps {
 export const SafetyAlerts: React.FC<SafetyAlertProps> = ({
   message,
   type,
-  onSettings,
 }) => {
   const bgColors = {
     success:
