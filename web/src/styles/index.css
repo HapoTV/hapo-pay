@@ -57,83 +57,79 @@
   --color-danger-solid-hover: #B91C1C;
 }
 
-html[data-theme='dark'] {
-  color-scheme: dark;
+.theme-scope[data-theme='dark'] {
+  background: #0D0B1A;
+  color: #F8FAFC;
 }
 
-html[data-theme='dark'] body {
-  background: #0D0B1A !important;
-  color: #F8FAFC !important;
-}
-
-html[data-theme='dark'] .bg-white,
-html[data-theme='dark'] .bg-slate-100,
-html[data-theme='dark'] .bg-slate-200,
-html[data-theme='dark'] .bg-slate-300,
-html[data-theme='dark'] .bg-gray-50,
-html[data-theme='dark'] .bg-gray-100 {
+[data-theme='dark'] .bg-white,
+[data-theme='dark'] .bg-slate-100,
+[data-theme='dark'] .bg-slate-200,
+[data-theme='dark'] .bg-slate-300,
+[data-theme='dark'] .bg-gray-50,
+[data-theme='dark'] .bg-gray-100 {
   background-color: #1A1830 !important;
 }
 
-html[data-theme='dark'] .bg-slate-50,
-html[data-theme='dark'] .bg-gray-50 {
+[data-theme='dark'] .bg-slate-50,
+[data-theme='dark'] .bg-gray-50 {
   background-color: #0D0B1A !important;
 }
 
-html[data-theme='dark'] .border-slate-200,
-html[data-theme='dark'] .border-slate-300,
-html[data-theme='dark'] .border-gray-200,
-html[data-theme='dark'] .border-gray-300,
-html[data-theme='dark'] .border-gray-500,
-html[data-theme='dark'] .border-gray-600,
-html[data-theme='dark'] .border-slate-100 {
+[data-theme='dark'] .border-slate-200,
+[data-theme='dark'] .border-slate-300,
+[data-theme='dark'] .border-gray-200,
+[data-theme='dark'] .border-gray-300,
+[data-theme='dark'] .border-gray-500,
+[data-theme='dark'] .border-gray-600,
+[data-theme='dark'] .border-slate-100 {
   border-color: #2A2740 !important;
 }
 
-html[data-theme='dark'] .text-slate-950,
-html[data-theme='dark'] .text-slate-900,
-html[data-theme='dark'] .text-slate-800,
-html[data-theme='dark'] .text-slate-700,
-html[data-theme='dark'] .text-slate-600,
-html[data-theme='dark'] .text-slate-500,
-html[data-theme='dark'] .text-slate-400,
-html[data-theme='dark'] .text-gray-900,
-html[data-theme='dark'] .text-gray-800,
-html[data-theme='dark'] .text-gray-700,
-html[data-theme='dark'] .text-gray-600,
-html[data-theme='dark'] .text-gray-500,
-html[data-theme='dark'] .text-gray-400,
-html[data-theme='dark'] .text-white {
+[data-theme='dark'] .text-slate-950,
+[data-theme='dark'] .text-slate-900,
+[data-theme='dark'] .text-slate-800,
+[data-theme='dark'] .text-slate-700,
+[data-theme='dark'] .text-slate-600,
+[data-theme='dark'] .text-slate-500,
+[data-theme='dark'] .text-slate-400,
+[data-theme='dark'] .text-gray-900,
+[data-theme='dark'] .text-gray-800,
+[data-theme='dark'] .text-gray-700,
+[data-theme='dark'] .text-gray-600,
+[data-theme='dark'] .text-gray-500,
+[data-theme='dark'] .text-gray-400,
+[data-theme='dark'] .text-white {
   color: #F8FAFC !important;
 }
 
-html[data-theme='dark'] .text-slate-300,
-html[data-theme='dark'] .text-slate-400,
-html[data-theme='dark'] .text-gray-300,
-html[data-theme='dark'] .text-gray-400 {
+[data-theme='dark'] .text-slate-300,
+[data-theme='dark'] .text-slate-400,
+[data-theme='dark'] .text-gray-300,
+[data-theme='dark'] .text-gray-400 {
   color: #CBD5E1 !important;
 }
 
-html[data-theme='dark'] .text-slate-500,
-html[data-theme='dark'] .text-gray-500 {
+[data-theme='dark'] .text-slate-500,
+[data-theme='dark'] .text-gray-500 {
   color: #94A3B8 !important;
 }
 
-html[data-theme='dark'] .placeholder-slate-400::placeholder,
-html[data-theme='dark'] .placeholder-slate-500::placeholder,
-html[data-theme='dark'] .placeholder-gray-400::placeholder,
-html[data-theme='dark'] .placeholder-gray-500::placeholder {
+[data-theme='dark'] .placeholder-slate-400::placeholder,
+[data-theme='dark'] .placeholder-slate-500::placeholder,
+[data-theme='dark'] .placeholder-gray-400::placeholder,
+[data-theme='dark'] .placeholder-gray-500::placeholder {
   color: #94A3B8 !important;
 }
 
-html[data-theme='dark'] .bg-slate-50 .text-slate-900,
-html[data-theme='dark'] .bg-slate-50 .text-slate-700,
-html[data-theme='dark'] .bg-slate-50 .text-slate-600,
-html[data-theme='dark'] .bg-slate-50 .text-gray-900,
-html[data-theme='dark'] .bg-slate-50 .text-gray-700,
-html[data-theme='dark'] .bg-slate-50 .text-gray-600,
-html[data-theme='dark'] .bg-slate-50 .text-slate-500,
-html[data-theme='dark'] .bg-slate-50 .text-gray-500 {
+[data-theme='dark'] .bg-slate-50 .text-slate-900,
+[data-theme='dark'] .bg-slate-50 .text-slate-700,
+[data-theme='dark'] .bg-slate-50 .text-slate-600,
+[data-theme='dark'] .bg-slate-50 .text-gray-900,
+[data-theme='dark'] .bg-slate-50 .text-gray-700,
+[data-theme='dark'] .bg-slate-50 .text-gray-600,
+[data-theme='dark'] .bg-slate-50 .text-slate-500,
+[data-theme='dark'] .bg-slate-50 .text-gray-500 {
   color: inherit !important;
 }
  
@@ -172,13 +168,13 @@ html[data-theme='dark'] .bg-slate-50 .text-gray-500 {
 }
  
 /* ============================================================
-   LIGHT MODE REPAINT — global class overrides
+  LIGHT MODE REPAINT — dashboard-scoped overrides
    ------------------------------------------------------------
    Specificity is boosted by repeating the attribute selector
-   (valid CSS3 — repeated simple selectors on the same element
-   each add to specificity). This guarantees these rules beat
-   plain Tailwind utility classes even if your project sets
-   `important: true` in tailwind.config.js.
+  (valid CSS3 — repeated simple selectors on the same element
+  each add to specificity). This ensures scoped rules beat
+  Tailwind utilities within the active dashboard, including
+  configurations that set `important: true`.
    ============================================================ */
  
 [data-theme='light'][data-theme='light'][data-theme='light'] {

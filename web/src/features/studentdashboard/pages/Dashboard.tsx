@@ -115,7 +115,7 @@ export const StudentDashboard: React.FC = () => {
             case 'games':
                 return <StudentGames />;
             case 'settings':
-                return <StudentProfile studentData={mockStudentData} onLogout={handleLogout} />;
+                return <StudentProfile studentData={mockStudentData} />;
             default:
                 return null;
         }

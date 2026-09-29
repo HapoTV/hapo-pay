@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, MoonStar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import {
@@ -52,7 +52,7 @@ import { useTheme } from '@/context/ThemeContext';
 export const ParentDashboard: React.FC = () => {
   const navigate = useNavigate();
   const clearAuth = useAuthStore((state) => state.clearAuth);
-  const { setTheme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
 
   const [currentTab, setCurrentTab] = useState<TabType>('home');
   const [parentData, setParentData] = useState(mockParentData);
@@ -580,20 +580,23 @@ export const ParentDashboard: React.FC = () => {
               <div className="bg-white rounded-3xl p-4 shadow-sm">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-400">Appearance</p>
 
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="mt-4 flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-[#2A2740] dark:bg-[#0D0B1A]">
+                  <div className="flex items-center gap-3">
+                    <MoonStar className="h-5 w-5 text-slate-500 dark:text-slate-400" />
+                    <div>
+                      <p className="text-sm font-medium text-slate-900 dark:text-white">Dark mode</p>
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Currently using {theme} theme</p>
+                    </div>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => setTheme('dark')}
-                    className="rounded-2xl border-2 border-slate-200 bg-slate-50 p-4 text-left text-slate-600 transition"
+                    role="switch"
+                    aria-checked={theme === 'dark'}
+                    aria-label="Dark mode"
+                    onClick={toggleTheme}
+                    className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors ${theme === 'dark' ? 'bg-violet-600' : 'bg-slate-300'}`}
                   >
-                    <span className="text-sm font-medium">Dark</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTheme('light')}
-                    className="rounded-2xl border-2 border-slate-200 bg-slate-50 p-4 text-left text-slate-600 transition"
-                  >
-                    <span className="text-sm font-medium">Light</span>
+                    <span className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${theme === 'dark' ? 'translate-x-6' : 'translate-x-1'}`} />
                   </button>
                 </div>
               </div>

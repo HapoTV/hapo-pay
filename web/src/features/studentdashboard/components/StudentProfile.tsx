@@ -1,14 +1,13 @@
 import React from 'react';
-import { User, Users, ShieldCheck, Settings2 } from 'lucide-react';
+import { MoonStar, User, Users, ShieldCheck, Settings2 } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
 
 interface Props {
     studentData: { name: string; currency: string; balance: number };
-    onLogout: () => void;
 }
 
-const StudentProfile: React.FC<Props> = ({ studentData, onLogout }) => {
-    const { setTheme } = useTheme();
+const StudentProfile: React.FC<Props> = ({ studentData }) => {
+    const { theme, toggleTheme } = useTheme();
 
     return (
     <div className="pb-20 md:pb-0 max-w-7xl mx-auto px-4 py-5 space-y-5 bg-slate-100 text-slate-900 dark:bg-[#0D0B1A] dark:text-white">
@@ -35,20 +34,23 @@ const StudentProfile: React.FC<Props> = ({ studentData, onLogout }) => {
         <div className="bg-white rounded-3xl border border-slate-200 p-4 shadow-sm">
             <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-600 dark:text-slate-400">Appearance</p>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="mt-4 flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-[#2A2740] dark:bg-[#0D0B1A]">
+                <div className="flex items-center gap-3">
+                    <MoonStar className="h-5 w-5 text-slate-500 dark:text-slate-400" />
+                    <div>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white">Dark mode</p>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Currently using {theme} theme</p>
+                    </div>
+                </div>
                 <button
                     type="button"
-                    onClick={() => setTheme('dark')}
-                    className="rounded-2xl border-2 border-slate-200 bg-slate-50 p-4 text-left text-slate-600 transition"
+                    role="switch"
+                    aria-checked={theme === 'dark'}
+                    aria-label="Dark mode"
+                    onClick={toggleTheme}
+                    className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors ${theme === 'dark' ? 'bg-violet-600' : 'bg-slate-300'}`}
                 >
-                    <span className="text-sm font-medium">Dark</span>
-                </button>
-                <button
-                    type="button"
-                    onClick={() => setTheme('light')}
-                    className="rounded-2xl border-2 border-slate-200 bg-slate-50 p-4 text-left text-slate-600 transition"
-                >
-                    <span className="text-sm font-medium">Light</span>
+                    <span className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${theme === 'dark' ? 'translate-x-6' : 'translate-x-1'}`} />
                 </button>
             </div>
         </div>
@@ -152,9 +154,6 @@ const StudentProfile: React.FC<Props> = ({ studentData, onLogout }) => {
             </div>
         </div>
 
-        <button onClick={onLogout} className="w-full bg-purple-600 text-white py-3 rounded-full font-semibold hover:bg-purple-700 transition">
-            Logout
-        </button>
     </div>
     );
 };
