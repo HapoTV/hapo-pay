@@ -56,6 +56,86 @@
   --color-danger-solid: #DC2626;
   --color-danger-solid-hover: #B91C1C;
 }
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+html[data-theme='dark'] body {
+  background: #0D0B1A !important;
+  color: #F8FAFC !important;
+}
+
+html[data-theme='dark'] .bg-white,
+html[data-theme='dark'] .bg-slate-100,
+html[data-theme='dark'] .bg-slate-200,
+html[data-theme='dark'] .bg-slate-300,
+html[data-theme='dark'] .bg-gray-50,
+html[data-theme='dark'] .bg-gray-100 {
+  background-color: #1A1830 !important;
+}
+
+html[data-theme='dark'] .bg-slate-50,
+html[data-theme='dark'] .bg-gray-50 {
+  background-color: #0D0B1A !important;
+}
+
+html[data-theme='dark'] .border-slate-200,
+html[data-theme='dark'] .border-slate-300,
+html[data-theme='dark'] .border-gray-200,
+html[data-theme='dark'] .border-gray-300,
+html[data-theme='dark'] .border-gray-500,
+html[data-theme='dark'] .border-gray-600,
+html[data-theme='dark'] .border-slate-100 {
+  border-color: #2A2740 !important;
+}
+
+html[data-theme='dark'] .text-slate-950,
+html[data-theme='dark'] .text-slate-900,
+html[data-theme='dark'] .text-slate-800,
+html[data-theme='dark'] .text-slate-700,
+html[data-theme='dark'] .text-slate-600,
+html[data-theme='dark'] .text-slate-500,
+html[data-theme='dark'] .text-slate-400,
+html[data-theme='dark'] .text-gray-900,
+html[data-theme='dark'] .text-gray-800,
+html[data-theme='dark'] .text-gray-700,
+html[data-theme='dark'] .text-gray-600,
+html[data-theme='dark'] .text-gray-500,
+html[data-theme='dark'] .text-gray-400,
+html[data-theme='dark'] .text-white {
+  color: #F8FAFC !important;
+}
+
+html[data-theme='dark'] .text-slate-300,
+html[data-theme='dark'] .text-slate-400,
+html[data-theme='dark'] .text-gray-300,
+html[data-theme='dark'] .text-gray-400 {
+  color: #CBD5E1 !important;
+}
+
+html[data-theme='dark'] .text-slate-500,
+html[data-theme='dark'] .text-gray-500 {
+  color: #94A3B8 !important;
+}
+
+html[data-theme='dark'] .placeholder-slate-400::placeholder,
+html[data-theme='dark'] .placeholder-slate-500::placeholder,
+html[data-theme='dark'] .placeholder-gray-400::placeholder,
+html[data-theme='dark'] .placeholder-gray-500::placeholder {
+  color: #94A3B8 !important;
+}
+
+html[data-theme='dark'] .bg-slate-50 .text-slate-900,
+html[data-theme='dark'] .bg-slate-50 .text-slate-700,
+html[data-theme='dark'] .bg-slate-50 .text-slate-600,
+html[data-theme='dark'] .bg-slate-50 .text-gray-900,
+html[data-theme='dark'] .bg-slate-50 .text-gray-700,
+html[data-theme='dark'] .bg-slate-50 .text-gray-600,
+html[data-theme='dark'] .bg-slate-50 .text-slate-500,
+html[data-theme='dark'] .bg-slate-50 .text-gray-500 {
+  color: inherit !important;
+}
  
 @layer base {
   body {

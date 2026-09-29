@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Lightbulb } from 'lucide-react';
 import type { Child } from '../types';
  
 export const PayPage: React.FC = () => {
@@ -112,8 +113,9 @@ export const PayPage: React.FC = () => {
  
           {/* Info Box */}
           <div className="mt-6 bg-[#151F35] border border-[#3ED9C2]/30 rounded-lg p-4">
-            <p className="text-sm text-[#7DD3FC]">
-              💡 <strong>Tip:</strong> You can set daily spending limits for each child in their account settings.
+            <p className="flex items-center gap-2 text-sm text-[#7DD3FC]">
+              <Lightbulb className="h-4 w-4" />
+              <span><strong>Tip:</strong> You can set daily spending limits for each child in their account settings.</span>
             </p>
           </div>
         </div>

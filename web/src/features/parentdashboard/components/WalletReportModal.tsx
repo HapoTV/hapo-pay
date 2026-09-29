@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Gift } from 'lucide-react';
+import { Gift, X, Clock3, MapPin, CalendarRange, CheckCircle2 } from 'lucide-react';
 
 interface WalletReportModalProps {
   open: boolean;
@@ -63,7 +63,7 @@ export const WalletReportModal: React.FC<WalletReportModalProps> = ({
             className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
             aria-label="Close report"
           >
-            ✕
+            <X className="h-5 w-5" />
           </button>
         </div>
 
@@ -217,7 +217,7 @@ export const WalletReportModal: React.FC<WalletReportModalProps> = ({
                   {/* Peak Spending Hours */}
                   <div className="rounded-2xl border border-gray-200 dark:border-[#2A2740] bg-gray-50 dark:bg-[#0D0B1A] p-4 shadow-sm flex items-start gap-4">
                     <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#7C5CFC] text-white">
-                      🕒
+                      <Clock3 className="h-5 w-5" />
                     </div>
 
                     <div>
@@ -239,7 +239,7 @@ export const WalletReportModal: React.FC<WalletReportModalProps> = ({
                   {/* Common Locations */}
                   <div className="rounded-2xl border border-gray-200 dark:border-[#2A2740] bg-gray-50 dark:bg-[#0D0B1A] p-4 shadow-sm flex items-start gap-4">
                     <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#22C55E] text-white">
-                      📍
+                      <MapPin className="h-5 w-5" />
                     </div>
 
                     <div>
@@ -260,7 +260,7 @@ export const WalletReportModal: React.FC<WalletReportModalProps> = ({
                   {/* Spending Frequency */}
                   <div className="rounded-2xl border border-gray-200 dark:border-[#2A2740] bg-gray-50 dark:bg-[#0D0B1A] p-4 shadow-sm flex items-start gap-4">
                     <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#F97316] text-white">
-                      📅
+                      <CalendarRange className="h-5 w-5" />
                     </div>
 
                     <div>
@@ -311,8 +311,9 @@ export const WalletReportModal: React.FC<WalletReportModalProps> = ({
 
                 {/* Normal Spending Alert */}
                 <div className="rounded-lg bg-green-50 dark:bg-[#14291F] border border-green-200 dark:border-[#22C55E]/30 p-3 mb-4">
-                  <p className="text-green-700 dark:text-[#4ADE80]">
-                    ✔️ All spending patterns are normal
+                  <p className="flex items-center gap-2 text-green-700 dark:text-[#4ADE80]">
+                    <CheckCircle2 className="h-4 w-4" />
+                    All spending patterns are normal
                   </p>
                 </div>
 

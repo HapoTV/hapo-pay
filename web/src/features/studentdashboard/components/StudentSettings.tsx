@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { BellRing, LockKeyhole, MoonStar, ShieldAlert, ShieldCheck } from 'lucide-react';
 
 interface Props {
     darkMode: boolean;
@@ -24,9 +25,9 @@ const StudentSettings: React.FC<Props> = ({ darkMode, setDarkMode, onLogout }) =
 
     const card = darkMode ? 'bg-[#1a1a2e] border-slate-800' : 'bg-white border-slate-200';
     const label = darkMode ? 'text-white' : 'text-slate-900';
-    const sublabel = darkMode ? 'text-slate-400' : 'text-slate-500';
-    const section = darkMode ? 'text-slate-500' : 'text-slate-400';
-    const iconColor = darkMode ? 'text-slate-400' : 'text-slate-500';
+    const sublabel = darkMode ? 'text-slate-400' : 'text-slate-600';
+    const section = darkMode ? 'text-slate-500' : 'text-slate-700';
+    const iconColor = darkMode ? 'text-slate-400' : 'text-slate-600';
 
     return (
         <div className="px-4 py-4 space-y-4">
@@ -36,7 +37,7 @@ const StudentSettings: React.FC<Props> = ({ darkMode, setDarkMode, onLogout }) =
 
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <span className={iconColor}>🌙</span>
+                        <MoonStar className={iconColor} />
                         <span className={`font-semibold ${label}`}>Dark Mode</span>
                     </div>
                     <Toggle value={darkMode} onChange={setDarkMode} />
@@ -63,13 +64,13 @@ const StudentSettings: React.FC<Props> = ({ darkMode, setDarkMode, onLogout }) =
                 <p className={`text-xs uppercase tracking-widest font-semibold ${section}`}>Notifications</p>
 
                 {[
-                    { icon: '🔔', label: 'Transaction alerts', desc: 'Get notified on every purchase', value: txnAlerts, onChange: setTxnAlerts },
-                    { icon: '🛡️', label: 'Flagged purchases', desc: 'Immediate alerts for blocked items', value: flaggedPurchases, onChange: setFlaggedPurchases },
-                    { icon: '🔔', label: 'Allowance reminders', desc: 'Weekly top-up reminder', value: allowanceReminders, onChange: setAllowanceReminders },
+                    { icon: <BellRing className={iconColor} />, label: 'Transaction alerts', desc: 'Get notified on every purchase', value: txnAlerts, onChange: setTxnAlerts },
+                    { icon: <ShieldAlert className={iconColor} />, label: 'Flagged purchases', desc: 'Immediate alerts for blocked items', value: flaggedPurchases, onChange: setFlaggedPurchases },
+                    { icon: <BellRing className={iconColor} />, label: 'Allowance reminders', desc: 'Weekly top-up reminder', value: allowanceReminders, onChange: setAllowanceReminders },
                 ].map((item) => (
                     <div key={item.label} className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <span className={iconColor}>{item.icon}</span>
+                            {item.icon}
                             <div>
                                 <p className={`text-sm font-semibold ${label}`}>{item.label}</p>
                                 <p className={`text-xs ${sublabel}`}>{item.desc}</p>
@@ -85,13 +86,13 @@ const StudentSettings: React.FC<Props> = ({ darkMode, setDarkMode, onLogout }) =
                 <p className={`text-xs uppercase tracking-widest font-semibold ${section}`}>Security</p>
 
                 {[
-                    { icon: '🔒', label: 'Biometric unlock', desc: 'Touch ID or Face ID required', value: biometric, onChange: setBiometric },
-                    { icon: '🛡️', label: 'Parent PIN', desc: '4-digit PIN for parent access', value: parentPin, onChange: setParentPin },
-                    { icon: '🔔', label: 'Spending alerts', desc: 'Alert when near spending limit', value: spendingAlerts, onChange: setSpendingAlerts },
+                    { icon: <LockKeyhole className={iconColor} />, label: 'Biometric unlock', desc: 'Touch ID or Face ID required', value: biometric, onChange: setBiometric },
+                    { icon: <ShieldCheck className={iconColor} />, label: 'Parent PIN', desc: '4-digit PIN for parent access', value: parentPin, onChange: setParentPin },
+                    { icon: <BellRing className={iconColor} />, label: 'Spending alerts', desc: 'Alert when near spending limit', value: spendingAlerts, onChange: setSpendingAlerts },
                 ].map((item) => (
                     <div key={item.label} className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <span className={iconColor}>{item.icon}</span>
+                            {item.icon}
                             <div>
                                 <p className={`text-sm font-semibold ${label}`}>{item.label}</p>
                                 <p className={`text-xs ${sublabel}`}>{item.desc}</p>

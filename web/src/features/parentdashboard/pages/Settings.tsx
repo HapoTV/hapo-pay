@@ -138,13 +138,13 @@ export const SettingsPage: React.FC = () => {
         </div>
 
         {/* Danger Zone */}
-        <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-red-900 mb-4">Danger Zone</h3>
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-6 dark:bg-[#1A1830] dark:border-red-400/40">
+          <h3 className="text-lg font-bold text-red-900 mb-4 dark:text-red-300">Danger Zone</h3>
           <div className="space-y-3">
-            <button className="w-full bg-red-100 hover:bg-red-200 text-red-900 py-2 rounded-lg font-medium transition">
+            <button className="w-full bg-red-100 hover:bg-red-200 text-red-900 py-2 rounded-lg font-medium transition dark:bg-[#2B1C2A] dark:hover:bg-[#352132] dark:text-red-100">
               Logout
             </button>
-            <button className="w-full bg-red-100 hover:bg-red-200 text-red-900 py-2 rounded-lg font-medium transition">
+            <button className="w-full bg-red-100 hover:bg-red-200 text-red-900 py-2 rounded-lg font-medium transition dark:bg-[#2B1C2A] dark:hover:bg-[#352132] dark:text-red-100">
               Delete Account
             </button>
           </div>

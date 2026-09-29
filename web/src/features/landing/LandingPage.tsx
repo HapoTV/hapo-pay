@@ -101,7 +101,7 @@ export default function LandingPage() {
               A smart financial platform that enables parents/guardians to manage student spending conveniently. Students can make payments using QR codes, while parents maintain complete control with real-time monitoring and smart spending limits.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <a href="/login" className="rounded-full bg-rose-500 px-8 py-4 text-center text-base font-bold text-white shadow-xl shadow-rose-300/20 transition hover:bg-rose-600">
+              <a href="/login" className="rounded-full bg-[#713cff] px-8 py-4 text-center text-base font-bold text-white shadow-xl shadow-[#713cff]/20 transition hover:bg-[#824fff]">
                 Start with HapoPay
               </a>
               <a href="#features" className="rounded-full border border-slate-300 bg-white px-8 py-4 text-center text-base font-bold text-slate-900 transition hover:bg-slate-100">
@@ -202,7 +202,7 @@ export default function LandingPage() {
           <p className="mx-auto mt-4 max-w-2xl text-base text-slate-700">
             Start with a safer student wallet experience built for parents, students, schools, and future financial confidence.
           </p>
-          <a href="/login" className="mt-8 inline-flex rounded-full bg-rose-500 px-7 py-3 text-base font-semibold text-white transition hover:bg-rose-600">
+          <a href="/login" className="mt-8 inline-flex rounded-full bg-[#713cff] px-7 py-3 text-base font-semibold text-white transition hover:bg-[#824fff]">
             Continue to sign in
           </a>
         </div>

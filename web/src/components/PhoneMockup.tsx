@@ -6,7 +6,7 @@ export default function PhoneMockup() {
     <div className="relative mx-auto flex w-full max-w-md justify-center lg:max-w-lg">
       <div className="absolute -right-4 top-20 z-20 hidden w-32 rounded-3xl border border-slate-200 bg-slate-100/95 p-2 shadow-2xl backdrop-blur-xl sm:block lg:-right-8">
         <p className="text-[0.5rem] font-semibold uppercase tracking-[0.15em] text-slate-500">Scan to pay</p>
-        <p className="mt-1 text-xs font-black text-slate-950"><span className="text-rose-500/80">QR</span> Ready</p>
+        <p className="mt-1 text-xs font-black text-slate-950"><span className="text-[#713cff]">QR</span> Ready</p>
       </div>
       <div className="absolute -right-4 top-20 z-20 hidden w-32 translate-y-24 rounded-3xl border border-slate-200 bg-slate-100/90 p-2 shadow-2xl backdrop-blur-xl sm:block lg:-right-8">
         <p className="text-[0.65rem] text-slate-500">Payment status</p>
@@ -14,7 +14,7 @@ export default function PhoneMockup() {
       </div>
       <div className="absolute -right-4 top-20 z-20 hidden w-32 translate-y-48 rounded-3xl border border-slate-200 bg-slate-100/90 p-2 shadow-2xl backdrop-blur-xl sm:block lg:-right-8">
         <p className="text-[0.65rem] text-slate-500">Learning games</p>
-        <p className="mt-1 text-xs font-bold text-slate-950">Play <span className="text-rose-500/80">&</span> earn</p>
+        <p className="mt-1 text-xs font-bold text-slate-950">Play <span className="text-[#713cff]">&</span> earn</p>
       </div>
       <div className="absolute -inset-4 rounded-[3rem] bg-gradient-to-tr from-primary/30 via-success/15 to-warning/20 blur-3xl" />
       <div className="relative w-[180px] rounded-[1.5rem] border-[5px] border-slate-600 bg-slate-800/90 p-1 shadow-sm shadow-primary/20 ring-1 ring-white/8 sm:w-[220px]">

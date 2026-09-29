@@ -1,4 +1,5 @@
 import React from 'react';
+import { AlertTriangle } from 'lucide-react';
 import { CloseIcon } from '../../../components/icons';
 
 type ElectricityMeter = {
@@ -435,9 +436,10 @@ export const DashboardElectricity: React.FC<DashboardElectricityProps> = ({
             <div className="space-y-4 p-4 sm:p-6">
               {/* Disclaimer Banner */}
               <div className="rounded border-l-4 border-[#F97316] bg-orange-50 p-4 dark:bg-[#3B1A16]">
-                <p className="mb-1 text-xs font-semibold text-[#C2410C] dark:text-[#F97316]">
-                  ⚠️ IMPORTANT DISCLAIMER
-                </p>
+                <div className="mb-1 flex items-center gap-2 text-xs font-semibold text-[#C2410C] dark:text-[#F97316]">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  <span>IMPORTANT DISCLAIMER</span>
+                </div>
 
                 <p className="text-xs text-orange-700 dark:text-[#F97316]/80">
                   Please verify the meter number carefully before confirming.

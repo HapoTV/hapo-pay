@@ -8,23 +8,30 @@ interface ThemeContextValue {
     setTheme: (t: Theme) => void;
 }
 
+interface ThemeProviderProps {
+    children: React.ReactNode;
+    storageKey?: string;
+}
+
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
-export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children, storageKey = 'hapo-theme' }) => {
     const [theme, setThemeState] = useState<Theme>(() => {
-        const stored = localStorage.getItem('hapo-theme');
+        const stored = localStorage.getItem(storageKey);
 
-return stored === 'light' || stored === 'dark'
-    ? stored
-    : 'dark';
+        return stored === 'light' || stored === 'dark'
+            ? stored
+            : 'dark';
     });
 
     useEffect(() => {
         const root = document.documentElement;
+        root.dataset.theme = theme;
+        root.style.colorScheme = theme;
         if (theme === 'dark') root.classList.add('dark');
         else root.classList.remove('dark');
-        localStorage.setItem('hapo-theme', theme);
-    }, [theme]);
+        localStorage.setItem(storageKey, theme);
+    }, [theme, storageKey]);
 
     const setTheme = (t: Theme) => setThemeState(t);
     const toggleTheme = () => setThemeState(t => (t === 'dark' ? 'light' : 'dark'));

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { AlertTriangle, X } from 'lucide-react';
 
 interface StudentData {
     name: string;
@@ -41,7 +42,7 @@ const StudentHome: React.FC<Props> = ({ studentData }) => {
     }, [showQRModal]);
 
     return (
-        <div className="pb-20 md:pb-0 max-w-7xl mx-auto px-4 py-5 space-y-5">
+        <div className="pb-20 md:pb-0 max-w-7xl mx-auto px-4 py-5 space-y-5 bg-slate-100 text-slate-900 dark:bg-[#0D0B1A] dark:text-white">
 
             {/* Balance Cards */}
             <div className="grid grid-cols-2 gap-4">
@@ -52,9 +53,9 @@ const StudentHome: React.FC<Props> = ({ studentData }) => {
                                 <path d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" />
                             </svg>
                         </div>
-                        <span className="text-xs text-slate-500">Available Balance</span>
+                        <span className="text-xs text-slate-600 dark:text-gray-300">Available Balance</span>
                     </div>
-                    <p className="text-2xl font-bold text-slate-800">{currency}{balance.toFixed(2)}</p>
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{currency}{balance.toFixed(2)}</p>
                 </div>
 
                 <div className="bg-white rounded-3xl border border-slate-200 p-4 shadow-sm">
@@ -64,15 +65,15 @@ const StudentHome: React.FC<Props> = ({ studentData }) => {
                                 <path fillRule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11 4a1 1 0 10-2 0v4a1 1 0 102 0V7zm-3 1a1 1 0 10-2 0v3a1 1 0 102 0V8zM8 9a1 1 0 00-2 0v2a1 1 0 102 0V9z" clipRule="evenodd" />
                             </svg>
                         </div>
-                        <span className="text-xs text-slate-500">This Month</span>
+                        <span className="text-xs text-slate-600 dark:text-gray-300">This Month</span>
                     </div>
-                    <p className="text-2xl font-bold text-slate-800">{currency}{monthlySpending.toFixed(2)}</p>
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{currency}{monthlySpending.toFixed(2)}</p>
                 </div>
             </div>
 
             {/* Quick Actions */}
             <div>
-                <h3 className="text-base font-semibold text-slate-800 mb-3">Quick Actions</h3>
+                <h3 className="text-base font-semibold text-slate-800 dark:text-white mb-3">Quick Actions</h3>
                 <div className="grid grid-cols-3 gap-3">
                     {[
                         {
@@ -106,10 +107,10 @@ const StudentHome: React.FC<Props> = ({ studentData }) => {
                         <button
                             key={action.label}
                             onClick={action.onClick}
-                            className="bg-white rounded-3xl border border-slate-200 p-3 flex flex-col items-center gap-2 shadow-sm hover:shadow-md transition"
+                            className="bg-[#1A1830] rounded-3xl border border-[#2A2740] p-3 flex flex-col items-center gap-2 shadow-sm hover:shadow-md transition"
                         >
                             <div className="bg-purple-100 p-2 rounded-xl">{action.icon}</div>
-                            <span className="text-xs text-slate-700 font-medium text-center leading-tight">{action.label}</span>
+                            <span className="text-xs text-slate-700 dark:text-gray-200 font-medium text-center leading-tight">{action.label}</span>
                         </button>
                     ))}
                 </div>
@@ -117,29 +118,29 @@ const StudentHome: React.FC<Props> = ({ studentData }) => {
 
             {/* Recent Activity */}
             <div>
-                <h3 className="text-base font-semibold text-slate-800 mb-3">Recent Activity</h3>
-                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-center">
+                <h3 className="text-base font-semibold text-slate-800 dark:text-white mb-3">Recent Activity</h3>
+                <div className="rounded-3xl border border-[#2A2740] bg-[#0D0B1A] p-5 text-center">
                     <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm">
                         <svg className="w-6 h-6 text-slate-400" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
                         </svg>
                     </div>
-                    <p className="text-slate-600 font-medium text-sm">No recent activity</p>
-                    <p className="text-slate-400 text-xs mt-2">Your activity from the last 3 days will appear here.</p>
+                    <p className="text-slate-700 dark:text-gray-200 font-medium text-sm">No recent activity</p>
+                    <p className="text-slate-500 dark:text-gray-400 text-xs mt-2">Your activity from the last 3 days will appear here.</p>
                 </div>
             </div>
 
             {/* Transaction History */}
             <div>
-                <h3 className="text-base font-semibold text-slate-800 mb-3">Transaction History</h3>
-                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-center">
+                <h3 className="text-base font-semibold text-slate-800 dark:text-white mb-3">Transaction History</h3>
+                <div className="rounded-3xl border border-[#2A2740] bg-[#0D0B1A] p-5 text-center">
                     <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm">
                         <svg className="w-6 h-6 text-slate-400" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
                         </svg>
                     </div>
-                    <p className="text-slate-600 font-medium text-sm">No transaction history</p>
-                    <p className="text-slate-400 text-xs mt-2">Your transaction history will appear here.</p>
+                    <p className="text-slate-700 dark:text-gray-200 font-medium text-sm">No transaction history</p>
+                    <p className="text-slate-500 dark:text-gray-400 text-xs mt-2">Your transaction history will appear here.</p>
                 </div>
             </div>
 
@@ -149,15 +150,16 @@ const StudentHome: React.FC<Props> = ({ studentData }) => {
                     <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-lg font-bold text-slate-900">Scan QR Code to Pay</h2>
-                            <button onClick={() => setShowQRModal(false)} className="text-slate-400 hover:text-slate-600 text-xl">✕</button>
+                            <button onClick={() => setShowQRModal(false)} className="text-slate-400 hover:text-slate-600 text-xl"><X className="w-5 h-5" /></button>
                         </div>
                         <div className="relative bg-black rounded-xl overflow-hidden aspect-square mb-4">
                             <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
                             <div className="absolute inset-0 flex items-center justify-center">
                                 <div className="w-48 h-48 border-2 border-purple-500 rounded-xl" />
                             </div>
-                            <p className="absolute bottom-4 left-0 right-0 text-center text-white text-sm">
-                                ⚠️ Camera access denied or not available
+                            <p className="absolute bottom-4 left-0 right-0 text-center text-white text-sm flex items-center justify-center gap-2">
+                                <AlertTriangle className="w-4 h-4" />
+                                Camera access denied or not available
                             </p>
                         </div>
                         <button onClick={() => setShowQRModal(false)}
@@ -174,7 +176,7 @@ const StudentHome: React.FC<Props> = ({ studentData }) => {
                     <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-lg font-bold text-slate-900">Request Money</h2>
-                            <button onClick={() => setShowRequestModal(false)} className="text-slate-400 hover:text-slate-600 text-xl">✕</button>
+                            <button onClick={() => setShowRequestModal(false)} className="text-slate-400 hover:text-slate-600 text-xl"><X className="w-5 h-5" /></button>
                         </div>
                         <div className="space-y-4">
                             <div>
@@ -215,7 +217,7 @@ const StudentHome: React.FC<Props> = ({ studentData }) => {
                                 </svg>
                                 <h2 className="text-lg font-bold text-slate-900">Emergency Request</h2>
                             </div>
-                            <button onClick={() => setShowEmergencyModal(false)} className="text-slate-400 hover:text-slate-600 text-xl">✕</button>
+                            <button onClick={() => setShowEmergencyModal(false)} className="text-slate-400 hover:text-slate-600 text-xl"><X className="w-5 h-5" /></button>
                         </div>
                         <div className="space-y-4">
                             <div>

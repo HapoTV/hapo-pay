@@ -54,54 +54,54 @@ export default function ParentSignupScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <nav className="border-b border-slate-200 bg-white">
+    <div className="min-h-screen bg-[#070b14] text-slate-100">
+      <nav className="border-b border-[#202a40] bg-[#0b101c]">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
           <button
             onClick={() => navigate("/")}
-            className="rounded-full border border-slate-300 px-6 py-2 text-sm font-bold text-slate-900 transition hover:bg-slate-100"
+            className="rounded-full border border-[#293650] px-6 py-2 text-sm font-bold text-slate-200 transition hover:bg-[#121a2b]"
           >
             Back to Home
           </button>
           <button
             onClick={() => navigate("/login")}
-            className="rounded-full bg-rose-500 px-6 py-2 text-sm font-bold text-white transition hover:bg-rose-600"
+            className="rounded-full bg-[#713cff] px-6 py-2 text-sm font-bold text-white transition hover:bg-[#824fff]"
           >
             Sign In
           </button>
         </div>
       </nav>
 
-      <div className="flex items-center justify-center px-6 py-16 lg:px-8">
-        <div className="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white p-6 shadow-lg">
-          <h1 className="text-center text-2xl font-black tracking-tight text-slate-950">
-            Parent Register
+      <div className="flex items-center justify-center px-6 py-12 lg:px-8">
+        <div className="w-full max-w-2xl rounded-[2rem] border border-[#222d46] bg-[#080c15] p-6 shadow-[0_20px_70px_rgba(0,0,0,0.35)] sm:p-8">
+          <h1 className="text-center text-2xl font-black tracking-tight text-white">
+            Create your parent account
           </h1>
-          <p className="mt-2 text-center text-sm text-slate-600">
+          <p className="mt-2 text-center text-sm text-[#8190b0]">
             Create your Hapo account to manage your family's finances
           </p>
 
-          <form onSubmit={handleSubmit} className="mt-10 space-y-5">
+          <form onSubmit={handleSubmit} className="mt-8 space-y-5">
             <div className="grid gap-6 sm:grid-cols-2">
               <div>
-                <label className="block text-sm font-semibold text-slate-900">First Name</label>
+                <label className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">First Name</label>
                 <input
                   type="text"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   placeholder="Phelo"
-                  className="mt-2 w-full rounded-lg border border-slate-300 bg-slate-50 px-4 py-2.5 text-slate-900 placeholder-slate-400 transition focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                  className="mt-2 w-full rounded-2xl border border-[#26334d] bg-[#121a2a] px-4 py-3 text-slate-100 placeholder-[#71809d] transition focus:border-[#713cff] focus:outline-none focus:ring-1 focus:ring-[#713cff]"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-900">Surname</label>
+                <label className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">Surname</label>
                 <input
                   type="text"
                   value={surname}
                   onChange={(e) => setSurname(e.target.value)}
                   placeholder="Madala"
-                  className="mt-2 w-full rounded-lg border border-slate-300 bg-slate-50 px-4 py-2.5 text-slate-900 placeholder-slate-400 transition focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                  className="mt-2 w-full rounded-2xl border border-[#26334d] bg-[#121a2a] px-4 py-3 text-slate-100 placeholder-[#71809d] transition focus:border-[#713cff] focus:outline-none focus:ring-1 focus:ring-[#713cff]"
                   required
                 />
               </div>
@@ -109,12 +109,12 @@ export default function ParentSignupScreen() {
 
             <div className="grid gap-6 sm:grid-cols-[0.75fr_1.25fr]">
               <div>
-                <label className="block text-sm font-semibold text-slate-900">Mobile Number</label>
+                <label className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">Mobile Number</label>
                 <div className="mt-2 flex gap-3">
                   <select
                     value={country}
                     onChange={(e) => setCountry(e.target.value)}
-                    className="h-10 rounded-xl border border-slate-300 bg-slate-50 px-3 text-slate-900 transition focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                    className="h-12 rounded-2xl border border-[#26334d] bg-[#121a2a] px-3 text-slate-100 transition focus:border-[#713cff] focus:outline-none focus:ring-1 focus:ring-[#713cff]"
                   >
                     {countries.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -127,17 +127,17 @@ export default function ParentSignupScreen() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="123456789"
-                    className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-slate-900 placeholder-slate-400 transition focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                    className="w-full rounded-2xl border border-[#26334d] bg-[#121a2a] px-4 py-3 text-slate-100 placeholder-[#71809d] transition focus:border-[#713cff] focus:outline-none focus:ring-1 focus:ring-[#713cff]"
                     required
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-900">Default Currency</label>
+                <label className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">Default Currency</label>
                 <select
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value)}
-                  className="mt-2 h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 text-slate-900 transition focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                  className="mt-2 h-12 w-full rounded-2xl border border-[#26334d] bg-[#121a2a] px-4 text-slate-100 transition focus:border-[#713cff] focus:outline-none focus:ring-1 focus:ring-[#713cff]"
                 >
                   {currencies.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -145,7 +145,7 @@ export default function ParentSignupScreen() {
                     </option>
                   ))}
                 </select>
-                <p className="mt-3 rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-600">
+                <p className="mt-3 rounded-2xl bg-[#101726] px-4 py-3 text-sm text-[#8190b0]">
                   Currency auto-selected as ZAR based on your phone number. You can change this if needed.
                 </p>
               </div>
@@ -153,23 +153,23 @@ export default function ParentSignupScreen() {
 
             <div className="grid gap-6">
               <div>
-                <label className="block text-sm font-semibold text-slate-900">Email Address</label>
+                <label className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">Email Address</label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="mt-2 w-full rounded-lg border border-slate-300 bg-slate-50 px-4 py-2.5 text-slate-900 placeholder-slate-400 transition focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                  className="mt-2 w-full rounded-2xl border border-[#26334d] bg-[#121a2a] px-4 py-3 text-slate-100 placeholder-[#71809d] transition focus:border-[#713cff] focus:outline-none focus:ring-1 focus:ring-[#713cff]"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-900">Province</label>
+                <label className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">Province</label>
                 <select
                   value={province}
                   onChange={(e) => setProvince(e.target.value)}
-                  className="mt-2 h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 text-slate-900 transition focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                  className="mt-2 h-12 w-full rounded-2xl border border-[#26334d] bg-[#121a2a] px-4 text-slate-100 transition focus:border-[#713cff] focus:outline-none focus:ring-1 focus:ring-[#713cff]"
                   required
                 >
                   {provinces.map((option) => (
@@ -183,35 +183,35 @@ export default function ParentSignupScreen() {
 
             <div className="grid gap-6 sm:grid-cols-2">
               <div>
-                <label className="block text-sm font-semibold text-slate-900">Password</label>
+                <label className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">Password</label>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="mt-2 w-full rounded-lg border border-slate-300 bg-slate-50 px-4 py-2.5 text-slate-900 placeholder-slate-400 transition focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                  className="mt-2 w-full rounded-2xl border border-[#26334d] bg-[#121a2a] px-4 py-3 text-slate-100 placeholder-[#71809d] transition focus:border-[#713cff] focus:outline-none focus:ring-1 focus:ring-[#713cff]"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-900">Confirm Password</label>
+                <label className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">Confirm Password</label>
                 <input
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="mt-2 w-full rounded-lg border border-slate-300 bg-slate-50 px-4 py-2.5 text-slate-900 placeholder-slate-400 transition focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                  className="mt-2 w-full rounded-2xl border border-[#26334d] bg-[#121a2a] px-4 py-3 text-slate-100 placeholder-[#71809d] transition focus:border-[#713cff] focus:outline-none focus:ring-1 focus:ring-[#713cff]"
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-900">Gender</label>
+              <label className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">Gender</label>
               <select
                 value={gender}
                 onChange={(e) => setGender(e.target.value)}
-                className="mt-2 h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 text-slate-900 transition focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                className="mt-2 h-12 w-full rounded-2xl border border-[#26334d] bg-[#121a2a] px-4 text-slate-100 transition focus:border-[#713cff] focus:outline-none focus:ring-1 focus:ring-[#713cff]"
                 required
               >
                 <option value="">Select</option>
@@ -221,12 +221,12 @@ export default function ParentSignupScreen() {
               </select>
             </div>
 
-            <label className="mt-4 flex items-start gap-3 text-sm text-slate-600">
+            <label className="mt-4 flex items-start gap-3 text-sm text-[#8190b0]">
               <input
                 type="checkbox"
                 checked={agree}
                 onChange={(e) => setAgree(e.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-slate-300 text-rose-500 focus:ring-rose-500"
+                className="mt-1 h-4 w-4 rounded border-[#26334d] bg-[#121a2a] text-[#713cff] focus:ring-[#713cff]"
                 required
               />
               <span>
@@ -235,7 +235,7 @@ export default function ParentSignupScreen() {
                   href="/docs/HapoPay_Terms___Conditions_.docx.pdf"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-semibold text-rose-500 underline"
+                  className="font-semibold text-[#8d62ff] underline"
                 >
                   Terms & Conditions
                 </a>
@@ -244,9 +244,9 @@ export default function ParentSignupScreen() {
 
             <button
               type="submit"
-              className="mt-4 w-full rounded-full bg-rose-500 py-2.5 text-sm font-bold text-white shadow-lg shadow-rose-300/20 transition hover:bg-rose-600"
+              className="mt-4 w-full rounded-2xl bg-[#713cff] py-3.5 text-sm font-bold text-white shadow-lg shadow-[#713cff]/20 transition hover:bg-[#824fff]"
             >
-              Create Account
+              Sign Up
             </button>
           </form>
         </div>

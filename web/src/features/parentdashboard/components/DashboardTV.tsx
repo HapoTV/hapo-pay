@@ -153,7 +153,7 @@ export const DashboardTV: React.FC<DashboardTVProps> = ({
         paymentSource === 'family' ? 'Family Balance' : 'Savings';
 
       alert(
-        `✓ Payment successful!\n\nR${Number(paymentAmount).toFixed(
+        `Payment successful!\n\nR${Number(paymentAmount).toFixed(
           2
         )} has been paid for DSTV account ${
           verifiedAccount?.accountNumber

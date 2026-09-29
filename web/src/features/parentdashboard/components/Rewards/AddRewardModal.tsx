@@ -1,4 +1,5 @@
 import React from 'react';
+import { X } from 'lucide-react';
 import type { RewardIconOption } from './types';
 
 interface AddRewardModalProps {
@@ -68,7 +69,7 @@ export const AddRewardModal: React.FC<AddRewardModalProps> = ({
             className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
             aria-label="Close"
           >
-            ✕
+            <X className="h-5 w-5" />
           </button>
         </div>
 

@@ -3,6 +3,7 @@ import { LandingPage } from "@/features/landing";
 import { ParentLoginScreen, StudentLoginScreen, ParentSignupScreen, ForgotPasswordScreen } from "@/features/auth";
 import { ParentDashboard } from "@/features/parentdashboard/pages/Dashboard";
 import { StudentDashboard } from "@/features/studentdashboard/pages/Dashboard";
+import { ThemeProvider } from "@/context/ThemeContext";
 
 // Placeholder routes - to be implemented with actual pages
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -22,17 +23,21 @@ export default function AppRoutes() {
         <Route
           path="/parent/*"
           element={
-            <ProtectedRoute>
-              <ParentDashboard />
-            </ProtectedRoute>
+            <ThemeProvider storageKey="hapo-theme-parent">
+              <ProtectedRoute>
+                <ParentDashboard />
+              </ProtectedRoute>
+            </ThemeProvider>
           }
         />
         <Route
           path="/student/*"
           element={
-            <ProtectedRoute>
-              <StudentDashboard />
-            </ProtectedRoute>
+            <ThemeProvider storageKey="hapo-theme-student">
+              <ProtectedRoute>
+                <StudentDashboard />
+              </ProtectedRoute>
+            </ThemeProvider>
           }
         />
         <Route path="*" element={<Navigate to="/login" replace />} />
