@@ -1,4 +1,4 @@
-#!/Users/lordblack/Desktop/hapo-pay/backend/.venv/bin/python3.11
+#!/Users/lordblack/Desktop/hapo-pay/backend/.venv/bin/python
 import sys
 from coverage.cmdline import main
 if __name__ == '__main__':
