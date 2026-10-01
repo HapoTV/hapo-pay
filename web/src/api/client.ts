@@ -2,7 +2,7 @@ import axios from "axios";
 import { useAuthStore } from "@/store/authStore";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? "/api",
+  baseURL: import.meta.env.VITE_API_BASE_URL ?? "/api/v1",
 });
 
 api.interceptors.request.use((config) => {
@@ -24,25 +24,35 @@ api.interceptors.response.use(
 );
 
 // API endpoints organized by backend structure
+interface AuthResponse {
+  status: 'success';
+  message: string;
+  data: {
+    user: {
+      id: number;
+      email: string;
+      role: 'parent' | 'student' | 'admin';
+    };
+    tokens: {
+      access: string;
+      refresh: string;
+    };
+  };
+}
+
 export const authApi = {
   login: (data: { email: string; password: string }) => 
-    api.post("/auth/login/", data),
-  register: (data: { email: string; password: string; first_name: string; last_name: string; role: string }) => 
-    api.post("/auth/register/", data),
-  logout: () => 
-    api.post("/auth/logout/"),
-  refresh: (data: { refresh: string }) => 
-    api.post("/auth/refresh/", data),
-  verifyEmail: (data: { email: string; otp: string }) => 
-    api.post("/auth/verify-email/", data),
-  resetPassword: (data: { email: string }) => 
+    api.post<AuthResponse>("/auth/login/", data),
+  register: (data: { email: string; password: string; confirm_password: string; full_name: string; role: 'parent' | 'student'; phone_number?: string }) =>
+    api.post<AuthResponse>("/auth/register/", data),
+  logout: (refresh: string) =>
+    api.post("/auth/logout/", { refresh }),
+  requestPasswordReset: (data: { email: string }) =>
+    api.post("/auth/forgot-password/", data),
+  resetPassword: (data: { token: string; new_password: string; confirm_password: string }) =>
     api.post("/auth/reset-password/", data),
-  resetPasswordConfirm: (data: { token: string; new_password: string }) => 
-    api.post("/auth/reset-password-confirm/", data),
-  getMe: () => 
-    api.get("/auth/me/"),
-  updateMe: (data: { first_name?: string; last_name?: string; phone?: string }) => 
-    api.put("/auth/me/", data),
+  changePassword: (data: { old_password: string; new_password: string; confirm_password: string }) =>
+    api.post("/auth/change-password/", data),
 };
 
 export const parentApi = {
