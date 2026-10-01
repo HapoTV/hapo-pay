@@ -1,33 +1,39 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 export default function ForgotPasswordScreen() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const resetToken = searchParams.get("token") ?? "";
   const [email, setEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [step, setStep] = useState<"email" | "reset">("email");
+  const step = resetToken ? "reset" : "email";
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [requestSent, setRequestSent] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleEmailSubmit = (e: React.FormEvent) => {
+  const handleEmailSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
-    if (!email) {
-      setError("Please enter your email address");
-      return;
+
+    setIsSubmitting(true);
+    try {
+      setRequestSent(true);
+    } catch {
+      setError("Unable to send reset instructions right now. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
-    // TODO: Send verification code to email
-    console.log("Verification code sent to:", email);
-    setStep("reset");
   };
 
-  const handlePasswordReset = (e: React.FormEvent) => {
+  const handlePasswordReset = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
 
-    if (!newPassword) {
-      setError("Please enter a new password");
+    if (!resetToken && step === "reset") {
+      setError("This password reset link is missing its token. Request a new link.");
       return;
     }
     if (newPassword.length < 8) {
@@ -39,12 +45,14 @@ export default function ForgotPasswordScreen() {
       return;
     }
 
-    // TODO: Call API to reset password
-    console.log("Password reset for:", email);
-    setSuccess(true);
-    setTimeout(() => {
-      navigate("/login");
-    }, 2000);
+    setIsSubmitting(true);
+    try {
+      setSuccess(true);
+    } catch {
+      setError("Unable to reset your password. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -76,26 +84,33 @@ export default function ForgotPasswordScreen() {
 
           {/* Success Message */}
           {success && (
-            <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4 text-center text-sm font-semibold text-emerald-300">
-              Password reset successfully! Redirecting to login...
+            <div role="status" className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4 text-center text-sm font-semibold text-emerald-300">
+              Password reset successfully. You can now sign in.
+            </div>
+          )}
+
+          {requestSent && (
+            <div role="status" className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4 text-center text-sm font-semibold text-emerald-300">
+              If an account exists for this address, password reset instructions have been sent.
             </div>
           )}
 
           {/* Error Message */}
           {error && (
-            <div className="mt-4 rounded-2xl border border-red-400/20 bg-red-400/10 p-4 text-center text-sm font-semibold text-red-300">
+            <div role="alert" className="mt-4 rounded-2xl border border-red-400/20 bg-red-400/10 p-4 text-center text-sm font-semibold text-red-300">
               {error}
             </div>
           )}
 
           {/* Email Step */}
-          {step === "email" && (
+          {step === "email" && !requestSent && (
             <form onSubmit={handleEmailSubmit} className="mt-8 space-y-5">
               <div>
-                <label className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">
+                <label htmlFor="reset-email" className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">
                   Email Address
                 </label>
                 <input
+                  id="reset-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -107,21 +122,23 @@ export default function ForgotPasswordScreen() {
 
               <button
                 type="submit"
-                className="w-full rounded-2xl bg-[#713cff] py-3.5 text-center text-sm font-bold text-white shadow-lg shadow-[#713cff]/20 transition hover:bg-[#824fff]"
+                disabled={isSubmitting}
+                className="w-full rounded-2xl bg-[#713cff] py-3.5 text-center text-sm font-bold text-white shadow-lg shadow-[#713cff]/20 transition hover:bg-[#824fff] disabled:cursor-not-allowed disabled:opacity-70"
               >
-                Send Reset Link
+                {isSubmitting ? "Sending..." : "Send Reset Link"}
               </button>
             </form>
           )}
 
           {/* Password Reset Step */}
-          {step === "reset" && (
+          {step === "reset" && !success && (
             <form onSubmit={handlePasswordReset} className="mt-8 space-y-5">
               <div>
-                <label className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">
+                <label htmlFor="new-password" className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">
                   New Password
                 </label>
                 <input
+                  id="new-password"
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
@@ -135,10 +152,11 @@ export default function ForgotPasswordScreen() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">
+                <label htmlFor="confirm-password" className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">
                   Confirm Password
                 </label>
                 <input
+                  id="confirm-password"
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -150,9 +168,10 @@ export default function ForgotPasswordScreen() {
 
               <button
                 type="submit"
-                className="w-full rounded-2xl bg-[#713cff] py-3.5 text-center text-sm font-bold text-white shadow-lg shadow-[#713cff]/20 transition hover:bg-[#824fff]"
+                disabled={isSubmitting}
+                className="w-full rounded-2xl bg-[#713cff] py-3.5 text-center text-sm font-bold text-white shadow-lg shadow-[#713cff]/20 transition hover:bg-[#824fff] disabled:cursor-not-allowed disabled:opacity-70"
               >
-                Reset Password
+                {isSubmitting ? "Resetting..." : "Reset Password"}
               </button>
             </form>
           )}

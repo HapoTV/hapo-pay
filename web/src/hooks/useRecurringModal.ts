@@ -33,9 +33,7 @@ export const useRecurringModal = () => {
 
   return {
     showRecurringModal,
-    setShowRecurringModal,
     showRecurringFormModal,
-    setShowRecurringFormModal,
     openRecurringModal,
     closeRecurringModal,
     openRecurringFormModal,

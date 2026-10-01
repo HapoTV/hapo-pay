@@ -8,20 +8,6 @@ const countries = [
   { label: "UK +44", value: "UK" },
 ];
 
-const currencies = [
-  { label: "za South African Rand (R)", value: "ZAR" },
-  { label: "us US Dollar ($)", value: "USD" },
-];
-
-const provinces = [
-  "Select your province",
-  "Gauteng",
-  "Western Cape",
-  "KwaZulu-Natal",
-  "Eastern Cape",
-  "Limpopo",
-];
-
 export default function ParentSignupScreen() {
   const navigate = useNavigate();
   const setAuth = useAuthStore((state) => state.setAuth);
@@ -29,27 +15,34 @@ export default function ParentSignupScreen() {
   const [surname, setSurname] = useState("");
   const [country, setCountry] = useState("ZA");
   const [phone, setPhone] = useState("");
-  const [currency, setCurrency] = useState("ZAR");
   const [email, setEmail] = useState("");
-  const [province, setProvince] = useState(provinces[0]);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [gender, setGender] = useState("");
   const [agree, setAgree] = useState(false);
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (email && password && confirmPassword === password && agree) {
-      // Create a mock token for local development
-      const mockToken = btoa(`${email}:${password}`);
-      setAuth(mockToken, "parent");
+    setError("");
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+    if (!agree) {
+      setError("Please agree to the terms and conditions.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      setAuth("demo-parent-token", "parent");
       navigate("/parent");
-    } else if (password !== confirmPassword) {
-      alert("Passwords do not match");
-    } else if (!agree) {
-      alert("Please agree to the terms");
-    } else {
-      alert("Please fill in all required fields");
+    } catch {
+      setError("Unable to create your account. Check your details and try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -82,10 +75,12 @@ export default function ParentSignupScreen() {
           </p>
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+            {error && <p role="alert" className="rounded-xl border border-red-400/30 bg-red-400/10 p-3 text-sm text-red-200">{error}</p>}
             <div className="grid gap-6 sm:grid-cols-2">
               <div>
-                <label className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">First Name</label>
+                <label htmlFor="signup-first-name" className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">First Name</label>
                 <input
+                  id="signup-first-name"
                   type="text"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
@@ -95,8 +90,9 @@ export default function ParentSignupScreen() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">Surname</label>
+                <label htmlFor="signup-surname" className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">Surname</label>
                 <input
+                  id="signup-surname"
                   type="text"
                   value={surname}
                   onChange={(e) => setSurname(e.target.value)}
@@ -109,9 +105,10 @@ export default function ParentSignupScreen() {
 
             <div className="grid gap-6 sm:grid-cols-[0.75fr_1.25fr]">
               <div>
-                <label className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">Mobile Number</label>
+                <label htmlFor="signup-mobile" className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">Mobile Number</label>
                 <div className="mt-2 flex gap-3">
                   <select
+                    aria-label="Country calling code"
                     value={country}
                     onChange={(e) => setCountry(e.target.value)}
                     className="h-12 rounded-2xl border border-[#26334d] bg-[#121a2a] px-3 text-slate-100 transition focus:border-[#713cff] focus:outline-none focus:ring-1 focus:ring-[#713cff]"
@@ -123,6 +120,7 @@ export default function ParentSignupScreen() {
                     ))}
                   </select>
                   <input
+                    id="signup-mobile"
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
@@ -132,29 +130,13 @@ export default function ParentSignupScreen() {
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">Default Currency</label>
-                <select
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value)}
-                  className="mt-2 h-12 w-full rounded-2xl border border-[#26334d] bg-[#121a2a] px-4 text-slate-100 transition focus:border-[#713cff] focus:outline-none focus:ring-1 focus:ring-[#713cff]"
-                >
-                  {currencies.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-3 rounded-2xl bg-[#101726] px-4 py-3 text-sm text-[#8190b0]">
-                  Currency auto-selected as ZAR based on your phone number. You can change this if needed.
-                </p>
-              </div>
             </div>
 
             <div className="grid gap-6">
               <div>
-                <label className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">Email Address</label>
+                <label htmlFor="signup-email" className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">Email Address</label>
                 <input
+                  id="signup-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -164,27 +146,13 @@ export default function ParentSignupScreen() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">Province</label>
-                <select
-                  value={province}
-                  onChange={(e) => setProvince(e.target.value)}
-                  className="mt-2 h-12 w-full rounded-2xl border border-[#26334d] bg-[#121a2a] px-4 text-slate-100 transition focus:border-[#713cff] focus:outline-none focus:ring-1 focus:ring-[#713cff]"
-                  required
-                >
-                  {provinces.map((option) => (
-                    <option key={option} value={option} disabled={option === provinces[0]}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </div>
             </div>
 
             <div className="grid gap-6 sm:grid-cols-2">
               <div>
-                <label className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">Password</label>
+                <label htmlFor="signup-password" className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">Password</label>
                 <input
+                  id="signup-password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -194,8 +162,9 @@ export default function ParentSignupScreen() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">Confirm Password</label>
+                <label htmlFor="signup-confirm-password" className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">Confirm Password</label>
                 <input
+                  id="signup-confirm-password"
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -204,21 +173,6 @@ export default function ParentSignupScreen() {
                   required
                 />
               </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">Gender</label>
-              <select
-                value={gender}
-                onChange={(e) => setGender(e.target.value)}
-                className="mt-2 h-12 w-full rounded-2xl border border-[#26334d] bg-[#121a2a] px-4 text-slate-100 transition focus:border-[#713cff] focus:outline-none focus:ring-1 focus:ring-[#713cff]"
-                required
-              >
-                <option value="">Select</option>
-                <option value="female">Female</option>
-                <option value="male">Male</option>
-                <option value="other">Other</option>
-              </select>
             </div>
 
             <label className="mt-4 flex items-start gap-3 text-sm text-[#8190b0]">
@@ -244,9 +198,10 @@ export default function ParentSignupScreen() {
 
             <button
               type="submit"
+              disabled={isSubmitting}
               className="mt-4 w-full rounded-2xl bg-[#713cff] py-3.5 text-sm font-bold text-white shadow-lg shadow-[#713cff]/20 transition hover:bg-[#824fff]"
             >
-              Sign Up
+              {isSubmitting ? "Creating account..." : "Sign Up"}
             </button>
           </form>
         </div>

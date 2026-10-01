@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { CloseIcon } from '../../../components/icons';
 
 // Types
@@ -92,7 +92,7 @@ export const DashboardTV: React.FC<DashboardTVProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Handlers
-  const handleVerifyAccount = useCallback(async () => {
+  const handleVerifyAccount = () => {
     if (!dstvId.trim()) {
       setVerificationError(ERROR_MESSAGES.EMPTY_ID);
       return;
@@ -114,15 +114,15 @@ export const DashboardTV: React.FC<DashboardTVProps> = ({
 
       setIsVerifying(false);
     }, VERIFICATION_DELAY);
-  }, [dstvId]);
+  };
 
-  const handleConfirmAccount = useCallback(() => {
+  const handleConfirmAccount = () => {
     setAccountConfirmed(true);
     setPaymentAmount('');
     setPaymentError('');
-  }, []);
+  };
 
-  const handleProceedToPayment = useCallback(() => {
+  const handleProceedToPayment = () => {
     if (!paymentAmount || Number(paymentAmount) <= 0) {
       setPaymentError(ERROR_MESSAGES.INVALID_AMOUNT);
       return;
@@ -143,9 +143,21 @@ export const DashboardTV: React.FC<DashboardTVProps> = ({
 
     setPaymentError('');
     setShowPaymentConfirmation(true);
-  }, [paymentAmount, paymentSource, familyBalance, savings]);
+  };
 
-  const handleConfirmPayment = useCallback(async () => {
+  const resetForm = () => {
+    setDstvId('');
+    setVerifiedAccount(null);
+    setAccountConfirmed(false);
+    setPaymentAmount('');
+    setPaymentSource('family');
+    setVerificationError('');
+    setPaymentError('');
+    setShowPaymentConfirmation(false);
+    setIsProcessing(false);
+  };
+
+  const handleConfirmPayment = () => {
     setIsProcessing(true);
 
     setTimeout(() => {
@@ -166,23 +178,7 @@ export const DashboardTV: React.FC<DashboardTVProps> = ({
         onPaymentComplete();
       }
     }, PAYMENT_PROCESSING_DELAY);
-  }, [paymentAmount, paymentSource, verifiedAccount, onPaymentComplete]);
-
-  const resetForm = useCallback(() => {
-    setDstvId('');
-    setVerifiedAccount(null);
-    setAccountConfirmed(false);
-    setPaymentAmount('');
-    setPaymentSource('family');
-    setVerificationError('');
-    setPaymentError('');
-    setShowPaymentConfirmation(false);
-    setIsProcessing(false);
-  }, []);
-
-  const handleReset = useCallback(() => {
-    resetForm();
-  }, [resetForm]);
+  };
 
   // Render Tab Navigation
   const renderTabNavigation = () => (
@@ -414,7 +410,7 @@ export const DashboardTV: React.FC<DashboardTVProps> = ({
 
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <button
-                    onClick={handleReset}
+                    onClick={resetForm}
                     className="flex-1 rounded-lg border border-gray-200 bg-white px-4 py-2 font-medium text-gray-700 transition hover:bg-gray-100 dark:border-[#2A2740] dark:bg-[#0D0B1A] dark:text-gray-300 dark:hover:bg-[#2A2740]"
                   >
                     No, Try Again

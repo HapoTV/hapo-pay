@@ -1,20 +1,9 @@
-/**
- * useAccountTransfer Hook
- * Manages account-to-account transfer state
- */
-
 import { useState } from 'react';
 
-export const useAccountTransfer = (familyBalance: number, savings: number) => {
+export const useAccountTransfer = () => {
   const [transferSource, setTransferSource] = useState<'family' | 'savings'>('family');
   const [transferAmount, setTransferAmount] = useState('');
   const [transferMessage, setTransferMessage] = useState('');
-
-  const resetState = () => {
-    setTransferSource('family');
-    setTransferAmount('');
-    setTransferMessage('');
-  };
 
   const setSuccessMessage = (amount: number, from: string, to: string) => {
     setTransferMessage(`Successfully transferred R${amount.toFixed(2)} from ${from} to ${to}.`);
@@ -31,10 +20,6 @@ export const useAccountTransfer = (familyBalance: number, savings: number) => {
     transferAmount,
     setTransferAmount,
     transferMessage,
-    setTransferMessage,
-    familyBalance,
-    savings,
-    resetState,
     setSuccessMessage,
     setErrorMessage,
   };

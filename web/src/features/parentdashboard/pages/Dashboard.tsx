@@ -1,7 +1,16 @@
 import React, { useState } from 'react';
-import { AlertTriangle, MoonStar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
+import {
+  useAddChildModal,
+  useAddMoneyModal,
+  useAccountTransfer,
+  useAirtimeModal,
+  useElectricityModal,
+  useManageLimitsModal,
+  useRecurringModal,
+  useWalletTopupModal,
+} from '@/hooks';
 import {
   BottomNavigation,
   DashboardAirtime,
@@ -11,6 +20,7 @@ import {
   DashboardSearchNotice,
   DashboardTopbar,
   DashboardTV,
+  ParentProfileSection,
   WalletTopupModal,
   RecurringModal,
   RecurringFormModal,
@@ -43,96 +53,136 @@ import {
   mockQrPayments,
   dataBundlesByNetwork,
 } from '../constants/mockData';
-import { TabType, BalanceSource } from '../types/dashboard.types';
+import { TabType } from '../types/dashboard.types';
 
 import { WalletPage } from './Wallet';
 import { RewardsPage } from './Rewards';
-import { useTheme } from '@/context/ThemeContext';
 
 export const ParentDashboard: React.FC = () => {
   const navigate = useNavigate();
   const clearAuth = useAuthStore((state) => state.clearAuth);
-  const { theme, toggleTheme } = useTheme();
-
   const [currentTab, setCurrentTab] = useState<TabType>('home');
   const [parentData, setParentData] = useState(mockParentData);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSearchNotice, setShowSearchNotice] = useState(false);
-  const [showWalletTopupModal, setShowWalletTopupModal] = useState(false);
-  const [topupChildId, setTopupChildId] = useState('');
-  const [topupAmount, setTopupAmount] = useState('');
-  const [showRecurringModal, setShowRecurringModal] = useState(false);
-  const [showRecurringFormModal, setShowRecurringFormModal] = useState(false);
-  const [showManageLimitsModal, setShowManageLimitsModal] = useState(false);
-  const [transferSource, setTransferSource] = useState<BalanceSource>('family');
-  const [transferAmount, setTransferAmount] = useState('');
-  const [transferMessage, setTransferMessage] = useState('');
-  // Add Child modal state
-  const [showAddChildModal, setShowAddChildModal] = useState(false);
-  const [childFirstName, setChildFirstName] = useState('');
-  const [childLastName, setChildLastName] = useState('');
-  const [childUsername, setChildUsername] = useState('');
-  const [childPassword, setChildPassword] = useState('');
-  const [childWeeklyLimit, setChildWeeklyLimit] = useState('');
-  const [childDailyLimit, setChildDailyLimit] = useState('');
+  const {
+    showWalletTopupModal,
+    topupChildId,
+    setTopupChildId,
+    topupAmount,
+    setTopupAmount,
+    openModal: openWalletTopupModal,
+    closeModal: closeWalletTopupModal,
+  } = useWalletTopupModal();
+  const {
+    showRecurringModal,
+    showRecurringFormModal,
+    openRecurringModal,
+    closeRecurringModal,
+    openRecurringFormModal,
+    closeRecurringFormModal,
+  } = useRecurringModal();
+  const {
+    showManageLimitsModal,
+    openModal: openManageLimitsModal,
+    closeModal: closeManageLimitsModal,
+  } = useManageLimitsModal();
+  const {
+    transferSource,
+    setTransferSource,
+    transferAmount,
+    setTransferAmount,
+    transferMessage,
+    setErrorMessage: setTransferError,
+    setSuccessMessage: setTransferSuccess,
+  } = useAccountTransfer();
+  const {
+    showAddChildModal,
+    childFirstName,
+    setChildFirstName,
+    childLastName,
+    setChildLastName,
+    childUsername,
+    setChildUsername,
+    childPassword,
+    setChildPassword,
+    childWeeklyLimit,
+    setChildWeeklyLimit,
+    childDailyLimit,
+    setChildDailyLimit,
+    openModal: openAddChildModal,
+    closeModal: closeAddChildModal,
+  } = useAddChildModal();
 
-  // Airtime/Data state
-  const [showAirtimePage, setShowAirtimePage] = useState(false);
-  const [airtimeTab, setAirtimeTab] = useState<'buy' | 'history'>('buy');
-  const [contacts, setContacts] = useState(mockContacts);
-  const [showAddContactForm, setShowAddContactForm] = useState(false);
-  const [newContactNumber, setNewContactNumber] = useState('');
-  const [newContactName, setNewContactName] = useState('');
-  const [newContactNetwork, setNewContactNetwork] = useState('');
-  const [selectedContactForBuy, setSelectedContactForBuy] = useState<string | null>(null);
-  const [buyAccount, setBuyAccount] = useState('');
-  const [buyProductType, setBuyProductType] = useState('');
-  const [airtimeAmount, setAirtimeAmount] = useState('');
-  const [selectedDataBundle, setSelectedDataBundle] = useState('');
+  const {
+    showAirtimePage,
+    airtimeTab,
+    setAirtimeTab,
+    contacts,
+    setContacts,
+    showAddContactForm,
+    setShowAddContactForm,
+    newContactNumber,
+    setNewContactNumber,
+    newContactName,
+    setNewContactName,
+    newContactNetwork,
+    setNewContactNetwork,
+    selectedContactForBuy,
+    setSelectedContactForBuy,
+    buyAccount,
+    setBuyAccount,
+    buyProductType,
+    setBuyProductType,
+    airtimeAmount,
+    setAirtimeAmount,
+    selectedDataBundle,
+    setSelectedDataBundle,
+    showAirtimeConfirmation,
+    setShowAirtimeConfirmation,
+    openModal: openAirtimeModal,
+    closeModal: closeAirtimeModal,
+  } = useAirtimeModal(mockContacts);
 
-  // Add Money modal state
-  const [showAddMoneyModal, setShowAddMoneyModal] = useState(false);
-  const [addMoneyAmount, setAddMoneyAmount] = useState('');
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
+  const {
+    showAddMoneyModal,
+    addMoneyAmount,
+    setAddMoneyAmount,
+    selectedPaymentMethod,
+    setSelectedPaymentMethod,
+    openModal: openAddMoneyModal,
+    closeModal: closeAddMoneyModal,
+  } = useAddMoneyModal();
 
-  // Electricity page
-  const [showElectricityPage, setShowElectricityPage] = useState(false);
-  const [electricityTab, setElectricityTab] = useState<'buy' | 'history'>('buy');
-  const [electricityMeters, setElectricityMeters] = useState([{ id: '1', name: 'Home', meterNumber: '1234567890' }]);
-  const [showAddMeterForm, setShowAddMeterForm] = useState(false);
-  const [newMeterName, setNewMeterName] = useState('');
-  const [newMeterNumber, setNewMeterNumber] = useState('');
-  const [selectedMeterForBuy, setSelectedMeterForBuy] = useState<string | null>(null);
-  const [electricityAmount, setElectricityAmount] = useState('');
-  const [showElectricityConfirmation, setShowElectricityConfirmation] = useState(false);
+  const {
+    showElectricityPage,
+    electricityTab,
+    setElectricityTab,
+    electricityMeters,
+    setElectricityMeters,
+    showAddMeterForm,
+    setShowAddMeterForm,
+    newMeterName,
+    setNewMeterName,
+    newMeterNumber,
+    setNewMeterNumber,
+    selectedMeterForBuy,
+    setSelectedMeterForBuy,
+    electricityAmount,
+    setElectricityAmount,
+    showElectricityConfirmation,
+    setShowElectricityConfirmation,
+    openModal: openElectricityModal,
+    closeModal: closeElectricityModal,
+  } = useElectricityModal([{ id: '1', name: 'Home', meterNumber: '1234567890' }]);
 
   // TV page
   const [showTvPage, setShowTvPage] = useState(false);
   const [tvTab, setTvTab] = useState<'pay' | 'history'>('pay');
 
-  // Airtime/Electricity Confirmation states
-  const [showAirtimeConfirmation, setShowAirtimeConfirmation] = useState(false);
-
-  // Profile page states
-  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
-  const [appNotificationsEnabled, setAppNotificationsEnabled] = useState(true);
-  const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(true);
-  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
-  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [passwordError, setPasswordError] = useState('');
-
   const handleLogout = () => {
     clearAuth();
     navigate('/login');
-  };
-
-  const closeWalletTopupModal = () => {
-    setShowWalletTopupModal(false);
-    setTopupChildId('');
-    setTopupAmount('');
   };
 
   const handleTopupWallet = () => {
@@ -146,13 +196,13 @@ export const ParentDashboard: React.FC = () => {
   const handleTransferAccounts = () => {
     const amountValue = Number(transferAmount);
     if (!amountValue || amountValue <= 0) {
-      setTransferMessage('Please enter a valid transfer amount.');
+      setTransferError('Please enter a valid transfer amount.');
       return;
     }
 
     const sourceBalance = transferSource === 'family' ? parentData.familyBalance : parentData.savings;
     if (amountValue > sourceBalance) {
-      setTransferMessage(`Insufficient funds in ${transferSource === 'family' ? 'Family Balance' : 'Savings'}.`);
+      setTransferError(`Insufficient funds in ${transferSource === 'family' ? 'Family Balance' : 'Savings'}.`);
       return;
     }
 
@@ -169,39 +219,14 @@ export const ParentDashboard: React.FC = () => {
     };
 
     setParentData(updatedData);
-    setTransferMessage(`Successfully transferred R${amountValue.toFixed(2)} from ${transferSource === 'family' ? 'Family Balance' : 'Savings'} to ${transferSource === 'family' ? 'Savings' : 'Family Balance'}.`);
-    setTransferAmount('');
-  };
-
-  const openRecurringFormModal = () => {
-    setShowRecurringModal(false);
-    setShowRecurringFormModal(true);
-  };
-
-  const closeRecurringModal = () => setShowRecurringModal(false);
-  const closeRecurringFormModal = () => {
-    setShowRecurringFormModal(false);
-  };
-
-  const closeManageLimitsModal = () => {
-    setShowManageLimitsModal(false);
+    setTransferSuccess(
+      amountValue,
+      transferSource === 'family' ? 'Family Balance' : 'Savings',
+      transferSource === 'family' ? 'Savings' : 'Family Balance'
+    );
   };
 
   // Airtime handlers
-  const closeAirtimeModal = () => {
-    setShowAirtimePage(false);
-    setAirtimeTab('buy');
-    setShowAddContactForm(false);
-    setNewContactNumber('');
-    setNewContactName('');
-    setNewContactNetwork('');
-    setSelectedContactForBuy(null);
-    setBuyAccount('');
-    setBuyProductType('');
-    setAirtimeAmount('');
-    setSelectedDataBundle('');
-  };
-
   const handleAddContactClick = () => setShowAddContactForm((s) => !s);
 
   const handleSaveContact = () => {
@@ -224,16 +249,6 @@ export const ParentDashboard: React.FC = () => {
   };
 
   // Add Child handlers
-  const closeAddChildModal = () => {
-    setShowAddChildModal(false);
-    setChildFirstName('');
-    setChildLastName('');
-    setChildUsername('');
-    setChildPassword('');
-    setChildWeeklyLimit('');
-    setChildDailyLimit('');
-  };
-
   const handleCreateChild = () => {
     if (!childFirstName || !childLastName || !childUsername || !childPassword) return;
     const newChild = {
@@ -278,12 +293,6 @@ export const ParentDashboard: React.FC = () => {
     setSelectedDataBundle('');
   };
 
-  const closeAddMoneyModal = () => {
-    setShowAddMoneyModal(false);
-    setAddMoneyAmount('');
-    setSelectedPaymentMethod('');
-  };
-
   const handleContinueToPayment = () => {
     const amountValue = Number(addMoneyAmount);
     if (!amountValue || amountValue <= 0 || !selectedPaymentMethod) return;
@@ -325,16 +334,6 @@ export const ParentDashboard: React.FC = () => {
     setElectricityAmount('');
   };
 
-  const closeElectricityModal = () => {
-    setShowElectricityPage(false);
-    setElectricityTab('buy');
-    setSelectedMeterForBuy(null);
-    setElectricityAmount('');
-    setShowAddMeterForm(false);
-    setNewMeterName('');
-    setNewMeterNumber('');
-  };
-
   // TV handlers
   const closeTvModal = () => {
     setShowTvPage(false);
@@ -347,25 +346,19 @@ export const ParentDashboard: React.FC = () => {
       id: '1',
       title: 'Recurring Auto Payments',
       icon: <RefreshIcon className="w-6 h-6 text-[#713cff]" />,
-      onClick: () => setShowRecurringModal(true),
+      onClick: openRecurringModal,
     },
     {
       id: '2',
       title: 'Wallet Top-up',
       icon: <WalletIcon className="w-6 h-6 text-[#713cff]" />,
-      onClick: () => {
-        setTopupChildId('');
-        setTopupAmount('');
-        setShowWalletTopupModal(true);
-      },
+      onClick: openWalletTopupModal,
     },
     {
       id: '3',
       title: 'Manage Spending Limits',
       icon: <ShieldIcon className="w-6 h-6 text-[#713cff]" />,
-      onClick: () => {
-        setShowManageLimitsModal(true);
-      },
+      onClick: openManageLimitsModal,
     },
   ];
 
@@ -377,13 +370,13 @@ export const ParentDashboard: React.FC = () => {
       id: '1',
       title: 'Buy airtime and data',
       icon: <SignalIcon className="w-6 h-6 text-[#713cff]" />,
-      onClick: () => setShowAirtimePage(true),
+      onClick: openAirtimeModal,
     },
     {
       id: '2',
       title: 'Buy electricity',
       icon: <LightningBoltIcon className="w-6 h-6 text-[#713cff]" />,
-      onClick: () => setShowElectricityPage(true),
+      onClick: openElectricityModal,
     },
     {
       id: '3',
@@ -392,76 +385,6 @@ export const ParentDashboard: React.FC = () => {
       onClick: () => setShowTvPage(true),
     },
   ];
-
-  // Profile handlers
-  const handleEditProfile = () => {
-    setShowEditProfileModal(true);
-  };
-
-  const closeEditProfileModal = () => {
-    setShowEditProfileModal(false);
-  };
-
-  const handleSaveProfileChanges = () => {
-    alert('Profile updated successfully!');
-    closeEditProfileModal();
-  };
-
-  const handleDeleteAccount = () => {
-    setShowDeleteAccountModal(true);
-  };
-
-  const handleConfirmDeleteAccount = () => {
-    alert(`Account deletion initiated.\n\nYour account and all associated children accounts have been permanently deleted.\n\nThis action cannot be undone.`);
-    setShowDeleteAccountModal(false);
-    // In a real app, this would call an API to delete the account
-    // navigate('/login');
-  };
-
-  // Change password handlers (moved to component scope)
-  const handleOpenChangePassword = () => {
-    setPasswordError('');
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-    setShowChangePasswordModal(true);
-  };
-
-  const handleCloseChangePassword = () => {
-    setShowChangePasswordModal(false);
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-    setPasswordError('');
-  };
-
-  const handleSaveNewPassword = () => {
-    // Validation
-    if (!currentPassword) {
-      setPasswordError('Please enter your current password.');
-      return;
-    }
-    if (!newPassword) {
-      setPasswordError('Please enter a new password.');
-      return;
-    }
-    if (newPassword.length < 8) {
-      setPasswordError('New password must be at least 8 characters long.');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setPasswordError('New passwords do not match.');
-      return;
-    }
-    if (currentPassword === newPassword) {
-      setPasswordError('New password must be different from current password.');
-      return;
-    }
-
-    // Success
-    alert('Password changed successfully!');
-    handleCloseChangePassword();
-  };
 
   // Bottom Navigation Items
   const navItems = [
@@ -481,8 +404,8 @@ export const ParentDashboard: React.FC = () => {
             parentData={parentData}
             quickActions={quickActions}
             rechargeItems={rechargeItems}
-            onAddMoney={() => setShowAddMoneyModal(true)}
-            onAddChild={() => setShowAddChildModal(true)}
+            onAddMoney={openAddMoneyModal}
+            onAddChild={openAddChildModal}
             onChildClick={(child) => alert(`Manage ${child.name} - Coming Soon`)}
             onChangeCurrency={(child) => alert(`Change currency for ${child.name} - Coming Soon`)}
           />
@@ -519,157 +442,10 @@ export const ParentDashboard: React.FC = () => {
 
       case 'settings':
         return (
-          <div className="pb-16 md:pb-0 px-4 md:px-6 py-6">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-5">
-              <div>
-                <h1 className="text-2xl font-bold text-slate-900">My Profile</h1>
-                <p className="text-sm text-slate-500 mt-2">View your account information and parent details.</p>
-              </div>
-              <div className="text-sm text-slate-500">Manage your profile and security preferences in one place.</div>
-            </div>
-
-            <div className="bg-white rounded-3xl p-4 shadow-sm mb-5">
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-pink-500 text-white text-lg font-bold">
-                    {parentData.name
-                      .split(' ')
-                      .map((part) => part[0])
-                      .join('')
-                      .slice(0, 2)}
-                  </div>
-                  <div>
-                    <p className="text-base font-semibold text-slate-900">{parentData.name}</p>
-                    <p className="text-sm text-slate-500">Parent Account</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid gap-3">
-              <div className="bg-white rounded-3xl p-4 shadow-sm">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <h2 className="text-lg font-semibold text-slate-900">Personal Information</h2>
-                    <p className="text-sm text-slate-500">Your HapoPay parent profile details.</p>
-                  </div>
-                  <button className="rounded-full border border-pink-200 bg-pink-50 px-3 py-1.5 text-xs font-medium text-pink-600 hover:bg-pink-100 transition" onClick={handleEditProfile}>
-                    Edit profile
-                  </button>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-3xl border border-slate-200 p-3">
-                    <p className="text-[11px] text-slate-500">Full Name</p>
-                    <p className="mt-2 text-sm font-medium text-slate-900">{parentData.name}</p>
-                  </div>
-                  <div className="rounded-3xl border border-slate-200 p-3">
-                    <p className="text-[11px] text-slate-500">Email Address</p>
-                    <p className="mt-2 text-sm font-medium text-slate-900">{parentData.email}</p>
-                  </div>
-                  <div className="rounded-3xl border border-slate-200 p-3">
-                    <p className="text-[11px] text-slate-500">Phone Number</p>
-                    <p className="mt-2 text-sm font-medium text-slate-900">+27 71 234 5678</p>
-                  </div>
-                  <div className="rounded-3xl border border-slate-200 p-3">
-                    <p className="text-[11px] text-slate-500">Children Linked</p>
-                    <p className="mt-2 text-sm font-medium text-slate-900">{parentData.children.length}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-3xl p-4 shadow-sm">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-400">Appearance</p>
-
-                <div className="mt-4 flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-[#2A2740] dark:bg-[#0D0B1A]">
-                  <div className="flex items-center gap-3">
-                    <MoonStar className="h-5 w-5 text-slate-500 dark:text-slate-400" />
-                    <div>
-                      <p className="text-sm font-medium text-slate-900 dark:text-white">Dark mode</p>
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Currently using {theme} theme</p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={theme === 'dark'}
-                    aria-label="Dark mode"
-                    onClick={toggleTheme}
-                    className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors ${theme === 'dark' ? 'bg-violet-600' : 'bg-slate-300'}`}
-                  >
-                    <span className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${theme === 'dark' ? 'translate-x-6' : 'translate-x-1'}`} />
-                  </button>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-3xl p-4 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h2 className="text-lg font-semibold text-slate-900">Notifications</h2>
-                    <p className="text-sm text-slate-500">Manage your alert preferences.</p>
-                  </div>
-                  <button className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 transition">
-                    Manage
-                  </button>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between rounded-3xl border border-slate-200 p-3">
-                    <div>
-                      <p className="font-medium text-slate-900">App notifications</p>
-                      <p className="text-xs text-slate-500">Spending alerts and updates.</p>
-                    </div>
-                    <button onClick={() => setAppNotificationsEnabled(!appNotificationsEnabled)} className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium transition ${appNotificationsEnabled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                      {appNotificationsEnabled ? 'On' : 'Off'}
-                    </button>
-                  </div>
-                  <div className="flex items-center justify-between rounded-3xl border border-slate-200 p-3">
-                    <div>
-                      <p className="font-medium text-slate-900">Email notifications</p>
-                      <p className="text-xs text-slate-500">Weekly summaries and account alerts.</p>
-                    </div>
-                    <button onClick={() => setEmailNotificationsEnabled(!emailNotificationsEnabled)} className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium transition ${emailNotificationsEnabled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                      {emailNotificationsEnabled ? 'On' : 'Off'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-3xl p-4 shadow-sm">
-                <h2 className="text-lg font-semibold text-slate-900 mb-4">Security</h2>
-                <div className="space-y-3">
-                  <div className="flex flex-col gap-2 rounded-3xl border border-slate-200 p-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="font-medium text-slate-900">Change password</p>
-                      <p className="text-xs text-slate-500">Update your password regularly.</p>
-                    </div>
-                    <button onClick={handleOpenChangePassword} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 transition">
-                      Change password
-                    </button>
-                  </div>
-                  <div className="flex flex-col gap-2 rounded-3xl border border-slate-200 p-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="font-medium text-slate-900">Two-factor authentication</p>
-                      <p className="text-xs text-slate-500">Require a second verification step when signing in.</p>
-                    </div>
-                    <button className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 transition">
-                      Enable 2FA
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-red-50 rounded-3xl p-4 shadow-sm border border-red-200 dark:bg-[#1A1830] dark:border-red-400/40">
-                <h2 className="text-lg font-semibold text-red-900 mb-4 dark:text-red-300">Danger zone</h2>
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-start">
-                  <button className="w-full sm:w-auto rounded-3xl border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-100 transition min-w-[120px] sm:min-w-[130px] dark:border-red-400/50 dark:bg-[#2B1C2A] dark:text-red-200 dark:hover:bg-[#352132]">
-                    Logout
-                  </button>
-                  <button className="w-full sm:w-auto rounded-3xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 transition min-w-[120px] sm:min-w-[130px] dark:border-red-400/50 dark:bg-[#2B1C2A] dark:text-red-100 dark:hover:bg-[#352132]" onClick={handleDeleteAccount}>
-                    Delete account
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <ParentProfileSection
+            parentData={parentData}
+            onLogout={handleLogout}
+          />
         );
 
       default:
@@ -820,133 +596,6 @@ export const ParentDashboard: React.FC = () => {
             onChangePaymentMethod={setSelectedPaymentMethod}
             onContinue={handleContinueToPayment}
           />
-
-          {/* Edit Profile Modal */}
-          {showEditProfileModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-lg">
-                <h2 className="text-2xl font-bold text-slate-900 mb-4">Edit Profile</h2>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-900 mb-1">Full Name</label>
-                    <input type="text" defaultValue={parentData.name} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-900 mb-1">Email Address</label>
-                    <input type="email" defaultValue={parentData.email} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-900 mb-1">Phone Number</label>
-                    <input type="tel" defaultValue="+27 71 234 5678" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500" />
-                  </div>
-                </div>
-                <div className="flex gap-3 mt-6">
-                  <button onClick={closeEditProfileModal} className="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition">
-                    Cancel
-                  </button>
-                  <button onClick={handleSaveProfileChanges} className="flex-1 rounded-lg bg-pink-500 px-4 py-2 text-sm font-medium text-white hover:bg-pink-600 transition">
-                    Save Changes
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Change Password Modal */}
-          {showChangePasswordModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-lg">
-                <h2 className="text-2xl font-bold text-slate-900 mb-1">Change Password</h2>
-                <p className="text-sm text-slate-500 mb-6">Enter your current and new password</p>
-
-                {passwordError && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-                    <p className="text-sm text-red-700">{passwordError}</p>
-                  </div>
-                )}
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-900 mb-2">Current Password</label>
-                    <input
-                      type="password"
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      placeholder="Enter current password"
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-900 mb-2">New Password</label>
-                    <input
-                      type="password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="Enter new password (min 8 characters)"
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-900 mb-2">Confirm New Password</label>
-                    <input
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Confirm new password"
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-3 mt-6">
-                  <button
-                    onClick={handleCloseChangePassword}
-                    className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleSaveNewPassword}
-                    className="flex-1 rounded-lg bg-pink-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-pink-600 transition"
-                  >
-                    Update Password
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Delete Account Confirmation Modal */}
-          {showDeleteAccountModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-lg">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
-                    <AlertTriangle className="h-5 w-5 text-red-600" />
-                  </div>
-                  <h2 className="text-2xl font-bold text-red-600">Delete Account?</h2>
-                </div>
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-                  <p className="text-sm text-red-800 font-medium mb-2">This action cannot be undone.</p>
-                  <p className="text-sm text-red-700">Deleting your account will:</p>
-                  <ul className="text-sm text-red-700 list-disc list-inside mt-2 space-y-1">
-                    <li>Permanently delete your profile</li>
-                    <li>Delete all linked children accounts</li>
-                    <li>Clear all transaction history</li>
-                  </ul>
-                </div>
-                <p className="text-sm text-slate-600 mb-6">Are you sure you want to proceed? This action cannot be undone.</p>
-                <div className="flex gap-3">
-                  <button onClick={() => setShowDeleteAccountModal(false)} className="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition">
-                    Cancel
-                  </button>
-                  <button onClick={handleConfirmDeleteAccount} className="flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition">
-                    Delete Account
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
 
         </div>
       )}

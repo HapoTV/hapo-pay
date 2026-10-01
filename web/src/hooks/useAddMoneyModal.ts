@@ -20,20 +20,13 @@ export const useAddMoneyModal = () => {
     setSelectedPaymentMethod('');
   };
 
-  const resetState = () => {
-    setAddMoneyAmount('');
-    setSelectedPaymentMethod('');
-  };
-
   return {
     showAddMoneyModal,
-    setShowAddMoneyModal,
     addMoneyAmount,
     setAddMoneyAmount,
     selectedPaymentMethod,
     setSelectedPaymentMethod,
     openModal,
     closeModal,
-    resetState,
   };
 };

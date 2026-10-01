@@ -1,16 +1,28 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "@/store/authStore";
 
 export default function StudentLoginScreen() {
   const navigate = useNavigate();
+  const setAuth = useAuthStore((state) => state.setAuth);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSignIn = (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // TODO: Implement actual authentication logic
-    console.log("Student sign in:", { email, password });
-    navigate("/student");
+    setError("");
+    setIsSubmitting(true);
+
+    try {
+      setAuth("demo-student-token", "student");
+      navigate("/student");
+    } catch {
+      setError("Unable to sign in. Check your details and try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -40,12 +52,14 @@ export default function StudentLoginScreen() {
 
           {/* Form */}
           <form onSubmit={handleSignIn} className="mt-8 space-y-5">
+            {error && <p role="alert" className="rounded-xl border border-red-400/30 bg-red-400/10 p-3 text-sm text-red-200">{error}</p>}
             {/* Email Field */}
             <div>
-              <label className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">
+              <label htmlFor="student-email" className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">
                 Email
               </label>
               <input
+                id="student-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -57,10 +71,11 @@ export default function StudentLoginScreen() {
 
             {/* Password Field */}
             <div>
-              <label className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">
+              <label htmlFor="student-password" className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">
                 Password
               </label>
               <input
+                id="student-password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -73,9 +88,10 @@ export default function StudentLoginScreen() {
             {/* Sign In Button */}
             <button
               type="submit"
-              className="w-full rounded-2xl bg-[#713cff] py-3.5 text-center text-sm font-bold text-white shadow-lg shadow-[#713cff]/20 transition hover:bg-[#824fff]"
+              disabled={isSubmitting}
+              className="w-full rounded-2xl bg-[#713cff] py-3.5 text-center text-sm font-bold text-white shadow-lg shadow-[#713cff]/20 transition hover:bg-[#824fff] disabled:cursor-not-allowed disabled:opacity-70"
             >
-              Sign In
+              {isSubmitting ? "Signing in..." : "Sign In"}
             </button>
           </form>
 

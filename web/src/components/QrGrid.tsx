@@ -1,15 +1,16 @@
 import { useEffect, useState } from "react";
 
+const LIGHT_CELLS = [2, 6, 7, 9, 11, 14, 15, 17, 19, 22];
+
 export default function QrGrid() {
   const cells = Array.from({ length: 25 });
-  const lightCells = [2, 6, 7, 9, 11, 14, 15, 17, 19, 22];
-  const [activeCell, setActiveCell] = useState(lightCells[0]);
+  const [activeCell, setActiveCell] = useState(LIGHT_CELLS[0]);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
       setActiveCell((currentCell) => {
-        const currentIndex = lightCells.indexOf(currentCell);
-        return lightCells[(currentIndex + 1) % lightCells.length];
+        const currentIndex = LIGHT_CELLS.indexOf(currentCell);
+        return LIGHT_CELLS[(currentIndex + 1) % LIGHT_CELLS.length];
       });
     }, 450);
 

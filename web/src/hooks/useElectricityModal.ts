@@ -4,12 +4,7 @@
  */
 
 import { useState } from 'react';
-
-interface Meter {
-  id: string;
-  name: string;
-  meterNumber: string;
-}
+import type { Meter } from '@/features/parentdashboard/types/dashboard.types';
 
 export const useElectricityModal = (initialMeters: Meter[]) => {
   const [showElectricityPage, setShowElectricityPage] = useState(false);
@@ -37,19 +32,8 @@ export const useElectricityModal = (initialMeters: Meter[]) => {
     setShowElectricityConfirmation(false);
   };
 
-  const resetBuyState = () => {
-    setSelectedMeterForBuy(null);
-    setElectricityAmount('');
-  };
-
-  const resetMeterForm = () => {
-    setNewMeterName('');
-    setNewMeterNumber('');
-  };
-
   return {
     showElectricityPage,
-    setShowElectricityPage,
     electricityTab,
     setElectricityTab,
     electricityMeters,
@@ -68,7 +52,5 @@ export const useElectricityModal = (initialMeters: Meter[]) => {
     setShowElectricityConfirmation,
     openModal,
     closeModal,
-    resetBuyState,
-    resetMeterForm,
   };
 };

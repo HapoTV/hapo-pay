@@ -22,20 +22,13 @@ export const useWalletTopupModal = () => {
     setTopupAmount('');
   };
 
-  const resetState = () => {
-    setTopupChildId('');
-    setTopupAmount('');
-  };
-
   return {
     showWalletTopupModal,
-    setShowWalletTopupModal,
     topupChildId,
     setTopupChildId,
     topupAmount,
     setTopupAmount,
     openModal,
     closeModal,
-    resetState,
   };
 };

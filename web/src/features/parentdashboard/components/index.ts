@@ -12,5 +12,6 @@ export { DashboardHome } from './DashboardHome';
 export { DashboardTopbar } from './DashboardTopbar';
 export { DashboardSearchNotice } from './DashboardSearchNotice';
 export { DashboardNotificationsPanel } from './DashboardNotificationsPanel';
-export { EmergencyFundModal, WalletTopupModal, RecurringModal, RecurringFormModal, ManageLimitsModal, AddChildModal, AddMoneyModal } from './DashboardModals';
+export { ParentProfileSection } from './ParentProfileSection';
+export { WalletTopupModal, RecurringModal, RecurringFormModal, ManageLimitsModal, AddChildModal, AddMoneyModal } from './DashboardModals';
 export { TransferSection } from './TransferSection';

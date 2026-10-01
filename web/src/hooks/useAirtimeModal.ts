@@ -4,13 +4,7 @@
  */
 
 import { useState } from 'react';
-
-interface Contact {
-  id: string;
-  number: string;
-  name: string;
-  network: string;
-}
+import type { Contact } from '@/features/parentdashboard/types/dashboard.types';
 
 export const useAirtimeModal = (initialContacts: Contact[]) => {
   const [showAirtimePage, setShowAirtimePage] = useState(false);
@@ -46,23 +40,8 @@ export const useAirtimeModal = (initialContacts: Contact[]) => {
     setShowAirtimeConfirmation(false);
   };
 
-  const resetBuyState = () => {
-    setSelectedContactForBuy(null);
-    setBuyAccount('');
-    setBuyProductType('');
-    setAirtimeAmount('');
-    setSelectedDataBundle('');
-  };
-
-  const resetContactForm = () => {
-    setNewContactNumber('');
-    setNewContactName('');
-    setNewContactNetwork('');
-  };
-
   return {
     showAirtimePage,
-    setShowAirtimePage,
     airtimeTab,
     setAirtimeTab,
     contacts,
@@ -89,7 +68,5 @@ export const useAirtimeModal = (initialContacts: Contact[]) => {
     setShowAirtimeConfirmation,
     openModal,
     closeModal,
-    resetBuyState,
-    resetContactForm,
   };
 };

@@ -18,7 +18,6 @@ export const useManageLimitsModal = () => {
 
   return {
     showManageLimitsModal,
-    setShowManageLimitsModal,
     openModal,
     closeModal,
   };

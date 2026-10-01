@@ -84,31 +84,3 @@ export const delay = (ms: number): Promise<void> => {
   return new Promise((resolve) => setTimeout(resolve, ms));
 };
 
-/**
- * Deep clone an object
- * @param obj - Object to clone
- * @returns Cloned object
- */
-export const deepClone = <T>(obj: T): T => {
-  return JSON.parse(JSON.stringify(obj));
-};
-
-/**
- * Check if object is empty
- * @param obj - Object to check
- * @returns True if object is empty
- */
-export const isEmpty = (obj: Record<string, any> | null | undefined): boolean => {
-  if (!obj) return true;
-  return Object.keys(obj).length === 0;
-};
-
-/**
- * Merge objects
- * @param target - Target object
- * @param source - Source object
- * @returns Merged object
- */
-export const mergeObjects = <T extends Record<string, any>>(target: T, source: Partial<T>): T => {
-  return { ...target, ...source };
-};

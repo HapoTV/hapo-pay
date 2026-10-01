@@ -34,7 +34,6 @@ export const useAddChildModal = () => {
 
   return {
     showAddChildModal,
-    setShowAddChildModal,
     childFirstName,
     setChildFirstName,
     childLastName,
@@ -49,6 +48,5 @@ export const useAddChildModal = () => {
     setChildDailyLimit,
     openModal,
     closeModal,
-    resetState,
   };
 };
