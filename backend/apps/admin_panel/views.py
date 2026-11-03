@@ -14,6 +14,7 @@ from .serializers import (
 )
 from apps.payments.serializers import MerchantSerializer
 from core.permissions import IsAdmin
+from core.utils import parse_date_param
 from apps.accounts.models import User
 from apps.wallets.models import Transaction, Wallet
 from apps.payments.models import Merchant
@@ -108,14 +109,27 @@ class UserManagementView(APIView):
     """
     permission_classes = [IsAuthenticated, IsAdmin]
 
+    # Cap the page size so this endpoint cannot be used to dump the whole
+    # user table (and all its PII) in a single response.
+    DEFAULT_PAGE_SIZE = 50
+    MAX_PAGE_SIZE = 200
+
     def get(self, request):
-        users = User.objects.all()
+        # select_related('profile'): UserManagementSerializer reads
+        # profile.full_name, which issued one extra query per user (N+1).
+        users = User.objects.select_related('profile').all()
 
         role      = request.query_params.get('role')
         is_active = request.query_params.get('is_active')
         search    = request.query_params.get('search')
 
         if role:
+            valid_roles = {choice[0] for choice in User.ROLE_CHOICES}
+            if role not in valid_roles:
+                return Response({
+                    'status': 'error',
+                    'message': f"role must be one of: {', '.join(sorted(valid_roles))}"
+                }, status=status.HTTP_400_BAD_REQUEST)
             users = users.filter(role=role)
         if is_active is not None:
             users = users.filter(is_active=is_active.lower() == 'true')
@@ -135,7 +149,15 @@ class UserManagementView(APIView):
             )
 
         if 'role' in request.data:
-            user.role = request.data['role']
+            new_role = request.data['role']
+            valid_roles = {choice[0] for choice in User.ROLE_CHOICES}
+            if new_role not in valid_roles:
+                return Response({
+                    'status': 'error',
+                    'message': f"role must be one of: {', '.join(sorted(valid_roles))}"
+                }, status=status.HTTP_400_BAD_REQUEST)
+            user.role = new_role
+
         if 'is_active' in request.data:
             user.is_active = request.data['is_active']
         user.save()
@@ -164,7 +186,11 @@ class UserManagementView(APIView):
             action=action,
             resource_type='user',
             resource_id=str(user.id),
-            changes=request.data,
+            changes={
+                field: request.data[field]
+                for field in ('role', 'is_active')
+                if field in request.data
+            },
             ip_address=request.META.get('REMOTE_ADDR'),
             user_agent=request.META.get('HTTP_USER_AGENT', '')
         )

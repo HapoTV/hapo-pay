@@ -6,6 +6,8 @@ from rest_framework.views import APIView
 from django.contrib.auth import authenticate
 from django.core.mail import send_mail
 from django.conf import settings
+from django.db import transaction
+from django.utils import timezone
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import User, Profile, ParentProfile, StudentProfile
 from .serializers import (
@@ -14,9 +16,13 @@ from .serializers import (
     CompleteProfileSerializer, ParentProfileSerializer, StudentProfileSerializer
 )
 from core.permissions import IsParent, IsStudent, IsAdmin
+from apps.wallets.models import Wallet
+from apps.gamification.models import Reward
 from core.supabase_client import supabase
-import random
-import string
+import logging
+import secrets
+
+logger = logging.getLogger(__name__)
 
 
 class RegisterView(generics.CreateAPIView):
@@ -30,30 +36,44 @@ class RegisterView(generics.CreateAPIView):
 
         data = serializer.validated_data
 
-        # Create user in Django
-        user = User.objects.create_user(
-            email=data['email'],
-            password=data['password'],
-            role=data['role'],
-            phone_number=data.get('phone_number', '')
-        )
-
-        # Create profile
-        profile = Profile.objects.create(
-            user=user,
-            full_name=data['full_name']
-        )
-
-        # Create role-specific profile
-        if data['role'] == 'parent':
-            ParentProfile.objects.create(user=user)
-        elif data['role'] == 'student':
-            # For student, parent_email is required but not in this serializer
-            # Will be completed in complete_profile endpoint
-            StudentProfile.objects.create(
-                user=user,
-                parent=None  # To be set later
+        # All the rows that make up an account are created in one transaction.
+        # Previously each create() committed on its own, so a failure partway
+        # through left an orphaned User with no Profile -- and every later
+        # request for that user 500'd on Profile.objects.get().
+        with transaction.atomic():
+            # Create user in Django
+            user = User.objects.create_user(
+                email=data['email'],
+                password=data['password'],
+                role=data['role'],
+                phone_number=data.get('phone_number', '')
             )
+
+            # Create profile
+            profile = Profile.objects.create(
+                user=user,
+                full_name=data['full_name']
+            )
+
+            # Create role-specific profile
+            if data['role'] == 'parent':
+                ParentProfile.objects.create(user=user)
+            elif data['role'] == 'student':
+                # For student, parent_email is required but not in this serializer
+                # Will be completed in complete_profile endpoint
+                StudentProfile.objects.create(
+                    user=user,
+                    parent=None  # To be set later
+                )
+
+            # Every account needs a wallet. Nothing created one before, so the
+            # first transfer/payment for a new user hit
+            # Wallet.objects.get(user=...) -> Wallet.DoesNotExist -> HTTP 500.
+            Wallet.objects.create(user=user)
+
+            # Rewards row likewise: gamification reads Reward.objects.get(...)
+            # on the leaderboard and reward detail endpoints.
+            Reward.objects.get_or_create(user=user)
 
         # Create user in Supabase Auth
         try:
@@ -69,9 +89,10 @@ class RegisterView(generics.CreateAPIView):
             })
             user.supabase_id = supabase_user.user.id
             user.save()
-        except Exception as e:
-            # Log error but don't fail registration
-            print(f"Supabase registration error: {e}")
+        except Exception:
+            # Log error but don't fail registration. Uses logger (not print) so
+            # the failure actually lands in the configured log pipeline.
+            logger.exception("Supabase registration failed for new user %s", user.id)
 
         # Generate JWT tokens
         refresh = RefreshToken.for_user(user)
@@ -154,10 +175,12 @@ class LogoutView(APIView):
                 'status': 'success',
                 'message': 'Logged out successfully'
             })
-        except Exception as e:
+        except Exception:
+            # str(e) leaked internal token/library details to the caller.
+            logger.warning("Logout failed for user %s", request.user.id, exc_info=True)
             return Response({
                 'status': 'error',
-                'message': str(e)
+                'message': 'Invalid or expired refresh token'
             }, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -219,8 +242,8 @@ class ChangePasswordView(APIView):
             supabase.auth.update_user({
                 "password": serializer.validated_data['new_password']
             })
-        except Exception as e:
-            print(f"Supabase password update error: {e}")
+        except Exception:
+            logger.exception("Supabase password update failed for user %s", user.id)
 
         return Response({
             'status': 'success',
@@ -241,8 +264,11 @@ class ForgotPasswordView(APIView):
         try:
             user = User.objects.get(email=email)
 
-            # Generate reset token
-            reset_token = ''.join(random.choices(string.ascii_letters + string.digits, k=64))
+            # Generate reset token with a CSPRNG. random.choices() uses the
+            # Mersenne Twister, whose internal state is recoverable from
+            # observed output, so previously issued tokens were predictable and
+            # an attacker could forge a reset for any account.
+            reset_token = secrets.token_urlsafe(48)
 
             # Store token in cache (use Redis or database)
             from django.core.cache import cache
@@ -250,24 +276,30 @@ class ForgotPasswordView(APIView):
 
             # Send email
             reset_link = f"https://hapopay.com/reset-password?token={reset_token}"
-            send_mail(
-                'Password Reset Request - HapoPay',
-                f'Click the link to reset your password: {reset_link}\n\nThis link expires in 1 hour.',
-                settings.DEFAULT_FROM_EMAIL,
-                [email],
-                fail_silently=False,
-            )
+            try:
+                send_mail(
+                    'Password Reset Request - HapoPay',
+                    f'Click the link to reset your password: {reset_link}\n\nThis link expires in 1 hour.',
+                    settings.DEFAULT_FROM_EMAIL,
+                    [email],
+                    fail_silently=False,
+                )
+            except Exception:
+                # A mail-server failure must not change the response, or the
+                # differing status code re-introduces user enumeration.
+                logger.exception("Failed to send password reset email")
 
-            return Response({
-                'status': 'success',
-                'message': 'Password reset email sent'
-            })
         except User.DoesNotExist:
-            # Don't reveal that user doesn't exist for security
-            return Response({
-                'status': 'success',
-                'message': 'If an account exists, a reset email has been sent'
-            })
+            # Fall through to the shared response below. The two branches
+            # previously returned *different* messages ("Password reset email
+            # sent" vs "If an account exists..."), which let an attacker
+            # enumerate registered email addresses.
+            logger.info("Password reset requested for unregistered address")
+
+        return Response({
+            'status': 'success',
+            'message': 'If an account exists, a reset email has been sent'
+        })
 
 
 class ResetPasswordView(APIView):
@@ -353,20 +385,49 @@ class CompleteProfileView(APIView):
 
 
 class RoleSwitchView(APIView):
-    """Switch between roles (for users with multiple roles)"""
+    """Switch between roles the user has actually been provisioned for.
+
+    Security: this endpoint previously wrote `request.data['role']` straight
+    onto the user, with 'admin' among the accepted values. Because every
+    authorization check in the codebase is `request.user.role == '<x>'`
+    (core/permissions.py), any authenticated student could POST
+    {"role": "admin"} and gain the full admin panel -- user management, system
+    config, audit logs and fraud alerts. A role may now only be assumed if the
+    matching profile row exists, and 'admin' can never be self-assigned; admin
+    is granted only by an existing admin through UserManagementView.
+    """
     permission_classes = [IsAuthenticated]
+
+    # 'admin' is deliberately absent: it is never self-assignable.
+    SWITCHABLE_ROLES = {
+        'parent': 'parent_profile',
+        'student': 'student_profile',
+    }
 
     def post(self, request):
         role = request.data.get('role')
 
-        if role not in ['parent', 'student', 'admin']:
+        if role not in self.SWITCHABLE_ROLES:
             return Response({
                 'status': 'error',
                 'message': 'Invalid role'
             }, status=status.HTTP_400_BAD_REQUEST)
 
+        # The user must already own the profile for the role being assumed.
+        if getattr(request.user, self.SWITCHABLE_ROLES[role], None) is None:
+            logger.warning(
+                "Rejected role switch to %s for user %s: no %s provisioned",
+                role, request.user.id, self.SWITCHABLE_ROLES[role],
+            )
+            return Response({
+                'status': 'error',
+                'message': 'You are not provisioned for this role'
+            }, status=status.HTTP_403_FORBIDDEN)
+
         request.user.role = role
-        request.user.save()
+        request.user.save(update_fields=['role', 'updated_at'])
+
+        logger.info("User %s switched role to %s", request.user.id, role)
 
         return Response({
             'status': 'success',
