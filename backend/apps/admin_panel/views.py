@@ -1,23 +1,20 @@
 # apps/admin_panel/views.py
-from rest_framework import viewsets, status
+from rest_framework import viewsets, generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
-from django.db.models import Sum
+from django.db.models import Sum, Count, Q
 from django.utils import timezone
 from datetime import timedelta
-from .models import SystemConfig, AuditLog
-from apps.payments.models import FraudAlert
+from .models import SystemConfig, AuditLog, FraudAlert
 from .serializers import (
     SystemConfigSerializer, AuditLogSerializer, FraudAlertSerializer,
     UserManagementSerializer, PlatformAnalyticsSerializer
 )
-from apps.payments.serializers import MerchantSerializer
 from core.permissions import IsAdmin
 from apps.accounts.models import User
 from apps.wallets.models import Transaction, Wallet
 from apps.payments.models import Merchant
-from apps.payments.fraud_detection import check_transaction, freeze_and_alert
 import logging
 
 logger = logging.getLogger(__name__)
@@ -38,10 +35,12 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        user_id   = self.request.query_params.get('user')
-        action    = self.request.query_params.get('action')
+
+        # Apply filters
+        user_id = self.request.query_params.get('user')
+        action = self.request.query_params.get('action')
         start_date = self.request.query_params.get('start_date')
-        end_date   = self.request.query_params.get('end_date')
+        end_date = self.request.query_params.get('end_date')
 
         if user_id:
             queryset = queryset.filter(user_id=user_id)
@@ -51,117 +50,81 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
             queryset = queryset.filter(created_at__gte=start_date)
         if end_date:
             queryset = queryset.filter(created_at__lte=end_date)
+
         return queryset
 
 
 class FraudAlertViewSet(viewsets.ModelViewSet):
-    """Manage fraud alerts — list, filter, and action"""
+    """Manage fraud alerts"""
     queryset = FraudAlert.objects.all()
     serializer_class = FraudAlertSerializer
     permission_classes = [IsAuthenticated, IsAdmin]
 
     def get_queryset(self):
-        queryset = super().get_queryset().select_related(
-            'transaction', 'user', 'reviewed_by'
-        )
-        status_filter   = self.request.query_params.get('status')
-        severity_filter = self.request.query_params.get('severity')
-
+        queryset = super().get_queryset()
+        status_filter = self.request.query_params.get('status')
         if status_filter:
             queryset = queryset.filter(status=status_filter)
-        if severity_filter:
-            queryset = queryset.filter(severity=severity_filter)
         return queryset
 
     def update(self, request, *args, **kwargs):
-        partial  = kwargs.pop('partial', False)
+        partial = kwargs.pop('partial', False)
         instance = self.get_object()
-        serializer = self.get_serializer(
-            instance, data=request.data, partial=partial
-        )
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
 
-        new_status = request.data.get('status')
-        if new_status and new_status != instance.status:
-            instance.reviewed_by = request.user
-            instance.reviewed_at = timezone.now()
-
-            # Unfreeze transaction if cleared as false positive
-            if new_status == 'false_positive':
-                txn = instance.transaction
-                txn.status    = 'completed'
-                txn.is_flagged = False
-                txn.save(update_fields=['status', 'is_flagged', 'updated_at'])
+        # If status is being changed to resolved or confirmed
+        if 'status' in request.data:
+            instance.resolved_by = request.user
+            instance.resolved_at = timezone.now()
 
         self.perform_update(serializer)
-        instance.save(update_fields=['reviewed_by', 'reviewed_at'])
         return Response(serializer.data)
 
 
 class UserManagementView(APIView):
-    """
-    GET  /admin/users/              — list all users with filters
-    PUT  /admin/users/<id>/         — update role or is_active
-    POST /admin/users/<id>/suspend/ — suspend user
-    POST /admin/users/<id>/activate/— activate user
-    DELETE /admin/users/<id>/       — delete user
-    """
+    """Admin user management"""
     permission_classes = [IsAuthenticated, IsAdmin]
 
     def get(self, request):
         users = User.objects.all()
 
-        role      = request.query_params.get('role')
+        # Apply filters
+        role = request.query_params.get('role')
         is_active = request.query_params.get('is_active')
-        search    = request.query_params.get('search')
 
         if role:
             users = users.filter(role=role)
         if is_active is not None:
             users = users.filter(is_active=is_active.lower() == 'true')
-        if search:
-            users = users.filter(email__icontains=search)
 
         serializer = UserManagementSerializer(users, many=True)
-        return Response({'status': 'success', 'data': serializer.data})
+        return Response({
+            'status': 'success',
+            'data': serializer.data
+        })
 
     def put(self, request, user_id):
         try:
             user = User.objects.get(id=user_id)
         except User.DoesNotExist:
-            return Response(
-                {'status': 'error', 'message': 'User not found'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({
+                'status': 'error',
+                'message': 'User not found'
+            }, status=status.HTTP_404_NOT_FOUND)
 
+        # Update user
         if 'role' in request.data:
             user.role = request.data['role']
         if 'is_active' in request.data:
             user.is_active = request.data['is_active']
+
         user.save()
 
-        self._log_action(request, 'update_user', user)
-        return Response({'status': 'success', 'message': 'User updated successfully'})
-
-    def delete(self, request, user_id):
-        try:
-            user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
-            return Response(
-                {'status': 'error', 'message': 'User not found'},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        self._log_action(request, 'delete_user', user)
-        user.delete()
-        return Response(
-            {'status': 'success', 'message': 'User deleted successfully'},
-            status=status.HTTP_204_NO_CONTENT
-        )
-
-    def _log_action(self, request, action, user):
+        # Log action
         AuditLog.objects.create(
             user=request.user,
-            action=action,
+            action='admin_action',
             resource_type='user',
             resource_id=str(user.id),
             changes=request.data,
@@ -169,225 +132,155 @@ class UserManagementView(APIView):
             user_agent=request.META.get('HTTP_USER_AGENT', '')
         )
 
-
-class UserSuspendView(APIView):
-    """POST /admin/users/<id>/suspend/"""
-    permission_classes = [IsAuthenticated, IsAdmin]
-
-    def post(self, request, user_id):
-        try:
-            user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
-            return Response(
-                {'status': 'error', 'message': 'User not found'},
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        user.is_active = False
-        user.save(update_fields=['is_active'])
-
-        AuditLog.objects.create(
-            user=request.user,
-            action='suspend_user',
-            resource_type='user',
-            resource_id=str(user.id),
-            changes={'reason': request.data.get('reason', '')},
-            ip_address=request.META.get('REMOTE_ADDR'),
-            user_agent=request.META.get('HTTP_USER_AGENT', '')
-        )
-        return Response({'status': 'success', 'message': 'User suspended successfully'})
-
-
-class UserActivateView(APIView):
-    """POST /admin/users/<id>/activate/"""
-    permission_classes = [IsAuthenticated, IsAdmin]
-
-    def post(self, request, user_id):
-        try:
-            user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
-            return Response(
-                {'status': 'error', 'message': 'User not found'},
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        user.is_active = True
-        user.save(update_fields=['is_active'])
-
-        AuditLog.objects.create(
-            user=request.user,
-            action='activate_user',
-            resource_type='user',
-            resource_id=str(user.id),
-            changes={},
-            ip_address=request.META.get('REMOTE_ADDR'),
-            user_agent=request.META.get('HTTP_USER_AGENT', '')
-        )
-        return Response({'status': 'success', 'message': 'User activated successfully'})
+        return Response({
+            'status': 'success',
+            'message': 'User updated successfully'
+        })
 
 
 class MerchantVerificationView(APIView):
-    """
-    GET  /admin/merchants/pending/          — list unverified merchants
-    POST /admin/merchants/<id>/verify/      — verify a merchant
-    POST /admin/merchants/<id>/reject/      — reject a merchant
-    """
+    """Admin merchant verification"""
     permission_classes = [IsAuthenticated, IsAdmin]
 
     def get(self, request):
-        merchants = Merchant.objects.filter(verified=False).order_by('-created_at')
+        merchants = Merchant.objects.filter(verified=False)
         serializer = MerchantSerializer(merchants, many=True)
-        return Response({'status': 'success', 'data': serializer.data})
+        return Response({
+            'status': 'success',
+            'data': serializer.data
+        })
 
     def post(self, request, merchant_id):
         try:
             merchant = Merchant.objects.get(id=merchant_id)
         except Merchant.DoesNotExist:
-            return Response(
-                {'status': 'error', 'message': 'Merchant not found'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({
+                'status': 'error',
+                'message': 'Merchant not found'
+            }, status=status.HTTP_404_NOT_FOUND)
 
-        action = request.data.get('action', 'verify')  # verify | reject
+        merchant.verified = True
+        merchant.verified_by = request.user
+        merchant.verified_at = timezone.now()
+        merchant.save()
 
-        if action == 'verify':
-            merchant.verified    = True
-            merchant.verified_by = request.user
-            merchant.verified_at = timezone.now()
-            merchant.save(update_fields=['verified', 'verified_by', 'verified_at'])
-            message = 'Merchant verified successfully'
-        else:
-            merchant.verified = False
-            merchant.save(update_fields=['verified'])
-            message = 'Merchant rejected'
-
-        AuditLog.objects.create(
-            user=request.user,
-            action=f'{action}_merchant',
-            resource_type='merchant',
-            resource_id=str(merchant.id),
-            changes={'action': action},
-            ip_address=request.META.get('REMOTE_ADDR'),
-            user_agent=request.META.get('HTTP_USER_AGENT', '')
-        )
-        return Response({'status': 'success', 'message': message})
+        return Response({
+            'status': 'success',
+            'message': 'Merchant verified successfully'
+        })
 
 
 class PlatformAnalyticsView(APIView):
-    """GET /admin/analytics/ — platform-wide stats"""
+    """Platform-wide analytics for admin"""
     permission_classes = [IsAuthenticated, IsAdmin]
 
     def get(self, request):
         period = request.query_params.get('period', 'month')
-        now = timezone.now()
 
+        # Determine date range
+        now = timezone.now()
         if period == 'week':
             start_date = now - timedelta(days=7)
+        elif period == 'month':
+            start_date = now - timedelta(days=30)
         elif period == 'year':
             start_date = now - timedelta(days=365)
         else:
             start_date = now - timedelta(days=30)
 
-        total_users       = User.objects.count()
-        active_users      = User.objects.filter(
-            last_login__gte=start_date, is_active=True
+        # User statistics
+        total_users = User.objects.count()
+        active_users = User.objects.filter(
+            last_login__gte=start_date,
+            is_active=True
         ).count()
 
-        transactions      = Transaction.objects.filter(created_at__gte=start_date)
+        # Transaction statistics
+        transactions = Transaction.objects.filter(created_at__gte=start_date)
         total_transactions = transactions.count()
-        total_volume      = transactions.aggregate(
-            total=Sum('amount')
-        )['total'] or 0
-        pending_alerts    = FraudAlert.objects.filter(status='pending').count()
+        total_volume = transactions.aggregate(total=Sum('amount'))['total'] or 0
 
-        # Monthly user growth (last 12 months)
+        # Pending alerts
+        pending_alerts = FraudAlert.objects.filter(status='pending').count()
+
+        # Growth trends
         user_growth = []
         for i in range(12):
-            month_date  = now - timedelta(days=30 * i)
-            month_start = month_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-            month_end   = (month_start + timedelta(days=32)).replace(day=1)
-            count = User.objects.filter(
-                created_at__gte=month_start,
-                created_at__lt=month_end
-            ).count()
+            month_date = now - timedelta(days=30 * i)
+            month_start = month_date.replace(day=1, hour=0, minute=0, second=0)
+            month_end = (month_start + timedelta(days=32)).replace(day=1)
+            users_in_month = User.objects.filter(created_at__gte=month_start, created_at__lt=month_end).count()
             user_growth.append({
                 'month': month_start.strftime('%Y-%m'),
-                'new_users': count
+                'new_users': users_in_month
             })
 
-        revenue_by_category = list(
-            Transaction.objects.filter(
-                type='payment', created_at__gte=start_date
-            ).values('category').annotate(total=Sum('amount')).order_by('-total')
-        )
+        # Revenue by category
+        revenue_by_category = Transaction.objects.filter(
+            type='payment',
+            created_at__gte=start_date
+        ).values('category').annotate(
+            total=Sum('amount')
+        ).order_by('-total')
 
         return Response({
             'status': 'success',
             'data': {
-                'period':               period,
-                'total_users':          total_users,
-                'active_users':         active_users,
-                'total_transactions':   total_transactions,
-                'total_volume':         total_volume,
-                'pending_alerts':       pending_alerts,
-                'user_growth':          user_growth,
-                'revenue_by_category':  revenue_by_category,
+                'period': period,
+                'total_users': total_users,
+                'active_users': active_users,
+                'total_transactions': total_transactions,
+                'total_volume': total_volume,
+                'pending_alerts': pending_alerts,
+                'user_growth': user_growth,
+                'revenue_by_category': list(revenue_by_category)
             }
         })
 
 
 class FraudMonitoringView(APIView):
-    """
-    GET  /admin/fraud-monitoring/ — high risk pending alerts
-    POST /admin/fraud-monitoring/ — manually re-run fraud engine on a transaction
-    """
+    """Monitor and detect fraud"""
     permission_classes = [IsAuthenticated, IsAdmin]
 
     def get(self, request):
+        # Get recent high-risk transactions
         high_risk_alerts = FraudAlert.objects.filter(
             severity__in=['high', 'critical'],
             status='pending'
-        ).select_related('transaction', 'user').order_by('-created_at')[:20]
+        ).order_by('-created_at')[:20]
 
         serializer = FraudAlertSerializer(high_risk_alerts, many=True)
+
         return Response({
             'status': 'success',
             'data': {
                 'high_risk_alerts': serializer.data,
-                'total_pending': FraudAlert.objects.filter(status='pending').count(),
+                'total_pending': FraudAlert.objects.filter(status='pending').count()
             }
         })
 
     def post(self, request):
-        """Manually re-run the fraud engine on an existing transaction"""
+        """Manually trigger fraud check for transaction"""
         transaction_id = request.data.get('transaction_id')
 
         try:
-            txn = Transaction.objects.get(id=transaction_id)
+            transaction = Transaction.objects.get(id=transaction_id)
         except Transaction.DoesNotExist:
-            return Response(
-                {'status': 'error', 'message': 'Transaction not found'},
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        if txn.status == 'frozen':
-            return Response(
-                {'status': 'error', 'message': 'Transaction is already frozen'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        is_suspicious, reasons, severity, alert_type = check_transaction(txn, txn.user)
-
-        if is_suspicious:
-            freeze_and_alert(txn, reasons, severity, alert_type)
             return Response({
-                'status': 'success',
-                'message': 'Transaction flagged and frozen',
-                'data': {'reasons': reasons, 'severity': severity}
-            })
+                'status': 'error',
+                'message': 'Transaction not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        # Check for large transaction
+        if transaction.amount > 10000:
+            FraudAlert.objects.create(
+                transaction=transaction,
+                alert_type='large_transaction',
+                severity='high',
+                description=f"Large transaction of {transaction.amount} detected"
+            )
 
         return Response({
             'status': 'success',
-            'message': 'No fraud indicators found',
-            'data': {'reasons': []}
+            'message': 'Fraud check completed'
         })
