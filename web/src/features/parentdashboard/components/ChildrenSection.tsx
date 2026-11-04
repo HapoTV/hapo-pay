@@ -33,7 +33,7 @@ export const ChildrenSection: React.FC<ChildrenSectionProps> = ({
       {!hasChildren ? (
         <div className="bg-white rounded-2xl p-8 text-center border-2 border-dashed border-slate-200">
           <PersonIcon className="w-12 h-12 text-slate-400 mx-auto mb-3" />
-          <p className="text-slate-600 text-sm">No children yet. Click "Add Child" to create an account.</p>
+          <p className="text-slate-600 text-sm">No children yet. Share your family invite code so your child can sign up and join your family.</p>
         </div>
       ) : (
         <ul className="space-y-2">

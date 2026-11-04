@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { Logo } from "@/components/Logo";
 
 export default function ForgotPasswordScreen() {
   const navigate = useNavigate();
@@ -71,7 +72,8 @@ export default function ForgotPasswordScreen() {
 
       {/* Reset Form Container */}
       <div className="flex items-center justify-center px-6 py-12 lg:px-8">
-        <div className="w-full max-w-md rounded-[2rem] border border-[#222d46] bg-[#080c15] p-8 shadow-[0_20px_70px_rgba(0,0,0,0.35)]">
+        <div className="w-full max-w-md rounded-[2rem] border border-[#222d46] bg-[radial-gradient(ellipse_at_55%_0%,_#2a1d50_0%,_#17132b_40%,_#080c15_78%)] p-8 shadow-[0_20px_70px_rgba(0,0,0,0.35)]">
+          <Logo className="mx-auto mb-5 h-12 w-40 object-contain" />
           {/* Header */}
           <h1 className="text-center text-2xl font-black tracking-tight text-white">
             Reset Password

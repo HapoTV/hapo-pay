@@ -309,159 +309,60 @@ export const ManageLimitsModal: React.FC<ManageLimitsModalProps> = ({
 interface AddChildModalProps {
   open: boolean;
   onClose: () => void;
-  firstName: string;
-  lastName: string;
-  username: string;
-  password: string;
-  weeklyLimit: string;
-  dailyLimit: string;
-  onChangeFirstName: (value: string) => void;
-  onChangeLastName: (value: string) => void;
-  onChangeUsername: (value: string) => void;
-  onChangePassword: (value: string) => void;
-  onChangeWeeklyLimit: (value: string) => void;
-  onChangeDailyLimit: (value: string) => void;
-  onSubmit: () => void;
-  currency: string;
+  inviteCode: string;
+  error: string;
+  copyStatus: string;
+  onCopy: () => void;
 }
 
 export const AddChildModal: React.FC<AddChildModalProps> = ({
   open,
   onClose,
-  firstName,
-  lastName,
-  username,
-  password,
-  weeklyLimit,
-  dailyLimit,
-  onChangeFirstName,
-  onChangeLastName,
-  onChangeUsername,
-  onChangePassword,
-  onChangeWeeklyLimit,
-  onChangeDailyLimit,
-  onSubmit,
-  currency,
+  inviteCode,
+  error,
+  copyStatus,
+  onCopy,
 }) => (
   <ModalShell
-    title="Create Child Account"
+    title="Invite a child"
     open={open}
     onClose={onClose}
-    footer={(
-      <div className="flex gap-2 flex-col sm:flex-row sm:justify-end sm:items-center">
-        <button
-          onClick={onClose}
-          className="w-full rounded-lg border border-gray-200 dark:border-[#2A2740] bg-white dark:bg-[#1A1830] px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 transition hover:bg-gray-100 dark:hover:bg-[#2A2740] sm:w-auto"
-        >
-          Cancel
-        </button>
-
-        <button
-          onClick={onSubmit}
-          disabled={!firstName || !lastName || !username || !password}
-          className="w-full rounded-lg bg-[#7C5CFC] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#6A4CE0] disabled:cursor-not-allowed disabled:bg-[#7C5CFC]/30 sm:w-auto"
-        >
-          Create Account
-        </button>
-      </div>
-    )}
+    footer={null}
   >
     <div className="space-y-4">
-      <div>
-        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          First Name
-        </label>
-
-        <input
-          value={firstName}
-          onChange={(e) => onChangeFirstName(e.target.value)}
-          className="mt-2 w-full rounded-lg border border-gray-200 dark:border-[#2A2740] bg-gray-50 dark:bg-[#0D0B1A] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 shadow-sm focus:border-[#7C5CFC] focus:outline-none"
-        />
-      </div>
-
-      <div>
-        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Last Name
-        </label>
-
-        <input
-          value={lastName}
-          onChange={(e) => onChangeLastName(e.target.value)}
-          className="mt-2 w-full rounded-lg border border-gray-200 dark:border-[#2A2740] bg-gray-50 dark:bg-[#0D0B1A] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 shadow-sm focus:border-[#7C5CFC] focus:outline-none"
-        />
-      </div>
-
-      <div>
-        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Username (email)
-        </label>
-
-        <input
-          type="email"
-          value={username}
-          onChange={(e) => onChangeUsername(e.target.value)}
-          className="mt-2 w-full rounded-lg border border-gray-200 dark:border-[#2A2740] bg-gray-50 dark:bg-[#0D0B1A] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 shadow-sm focus:border-[#7C5CFC] focus:outline-none"
-        />
-      </div>
-
-      <div>
-        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Password
-        </label>
-
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => onChangePassword(e.target.value)}
-          className="mt-2 w-full rounded-lg border border-gray-200 dark:border-[#2A2740] bg-gray-50 dark:bg-[#0D0B1A] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 shadow-sm focus:border-[#7C5CFC] focus:outline-none"
-        />
-      </div>
-
-      <p className="text-sm text-gray-600 dark:text-gray-400">
-        Using same currency as parent account ({currency}). You can change it later using "Change Currency".
+      <p className="text-sm leading-6 text-gray-600 dark:text-gray-300">
+        To add a child, share your family invite code with them. They can sign up as a student and enter the code to join your family.
       </p>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Weekly Limit
-          </label>
-
-          <div className="mt-2 flex items-center gap-2">
-            <span className="rounded-l-lg border border-gray-200 dark:border-[#2A2740] bg-white dark:bg-[#1A1830] px-3 py-2 text-gray-700 dark:text-gray-300">
-              {currency}
-            </span>
-
-            <input
-              type="number"
-              min="0"
-              value={weeklyLimit}
-              onChange={(e) => onChangeWeeklyLimit(e.target.value)}
-              className="flex-1 rounded-r-lg border border-gray-200 dark:border-[#2A2740] bg-gray-50 dark:bg-[#0D0B1A] px-3 py-2 text-sm text-gray-900 dark:text-white shadow-sm focus:border-[#7C5CFC] focus:outline-none"
-            />
+      {error ? (
+        <p role="alert" className="rounded-xl border border-red-400/30 bg-red-400/10 p-3 text-sm text-red-200">{error}</p>
+      ) : (
+        <>
+          <div className="flex items-center justify-between gap-3 rounded-xl bg-gray-100 p-4 dark:bg-[#0D0B1A]">
+            <p className="select-all break-all text-xl font-bold tracking-wider text-[#8d62ff]">
+              {inviteCode}
+            </p>
+            <button
+              type="button"
+              onClick={onCopy}
+              disabled={!inviteCode}
+              className="shrink-0 rounded-lg bg-[#713cff] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#824fff] disabled:opacity-50"
+            >
+              Copy
+            </button>
           </div>
-        </div>
-
-        <div>
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Daily Limit
-          </label>
-
-          <div className="mt-2 flex items-center gap-2">
-            <span className="rounded-l-lg border border-gray-200 dark:border-[#2A2740] bg-white dark:bg-[#1A1830] px-3 py-2 text-gray-700 dark:text-gray-300">
-              {currency}
-            </span>
-
-            <input
-              type="number"
-              min="0"
-              value={dailyLimit}
-              onChange={(e) => onChangeDailyLimit(e.target.value)}
-              className="flex-1 rounded-r-lg border border-gray-200 dark:border-[#2A2740] bg-gray-50 dark:bg-[#0D0B1A] px-3 py-2 text-sm text-gray-900 dark:text-white shadow-sm focus:border-[#7C5CFC] focus:outline-none"
-            />
-          </div>
-        </div>
-      </div>
+          {copyStatus && <p role="status" className="text-sm text-gray-600 dark:text-gray-300">{copyStatus}</p>}
+          <p className="text-xs leading-5 text-gray-500 dark:text-gray-400">
+            Demo only: this code is stored in this browser and is not yet verified or linked by a backend.
+          </p>
+        </>
+      )}
+      <button
+        type="button"
+        onClick={onClose}
+        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 dark:border-[#2A2740] dark:bg-[#1A1830] dark:text-gray-200 dark:hover:bg-[#2A2740]"
+      >
+        Close
+      </button>
     </div>
   </ModalShell>
 );
