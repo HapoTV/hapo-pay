@@ -1,7 +1,7 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LandingPage } from "@/features/landing";
-import { ParentLoginScreen, StudentLoginScreen, ParentSignupScreen, ForgotPasswordScreen } from "@/features/auth";
+import { ParentLoginScreen, ParentSignupScreen, SignupRoleScreen, StudentSignupScreen, ForgotPasswordScreen } from "@/features/auth";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { useAuthStore } from "@/store/authStore";
 
@@ -27,8 +27,10 @@ export default function AppRoutes() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<ParentLoginScreen />} />
-        <Route path="/signup" element={<ParentSignupScreen />} />
-        <Route path="/student-login" element={<StudentLoginScreen />} />
+        <Route path="/signup" element={<SignupRoleScreen />} />
+        <Route path="/signup/parent" element={<ParentSignupScreen />} />
+        <Route path="/signup/student" element={<StudentSignupScreen />} />
+        <Route path="/student-login" element={<ParentLoginScreen initialRole="student" />} />
         <Route path="/forgot-password" element={<ForgotPasswordScreen />} />
         <Route path="/reset-password" element={<ForgotPasswordScreen />} />
         <Route

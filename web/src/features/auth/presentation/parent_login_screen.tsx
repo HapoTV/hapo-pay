@@ -1,14 +1,28 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Eye, EyeOff, LockKeyhole, Mail, UserRound } from "lucide-react";
+import { Logo } from "@/components/Logo";
 import { useAuthStore } from "@/store/authStore";
 
-export default function ParentLoginScreen() {
+type LoginRole = "parent" | "student";
+
+export default function ParentLoginScreen({
+  initialRole = "parent",
+}: {
+  initialRole?: LoginRole;
+}) {
   const navigate = useNavigate();
   const setAuth = useAuthStore((state) => state.setAuth);
+  const [role, setRole] = useState<LoginRole>(initialRole);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSocialSignIn = () => {
+    setError("Google and Apple sign-in will be available when authentication is connected.");
+  };
 
   const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -16,8 +30,8 @@ export default function ParentLoginScreen() {
     setIsSubmitting(true);
 
     try {
-      setAuth("demo-parent-token", "parent");
-      navigate("/parent");
+      setAuth(`demo-${role}-token`, role);
+      navigate(role === "parent" ? "/parent" : "/student");
     } catch {
       setError("Unable to sign in. Check your details and try again.");
     } finally {
@@ -47,58 +61,112 @@ export default function ParentLoginScreen() {
 
       {/* Login Form Container */}
       <div className="flex items-center justify-center px-6 py-12 lg:px-8">
-        <div className="w-full max-w-md rounded-[2rem] border border-[#222d46] bg-[#080c15] p-8 shadow-[0_20px_70px_rgba(0,0,0,0.35)]">
-          {/* Header */}
-          <h1 className="text-center text-2xl font-black tracking-tight text-white">
-            Parent Login
+        <div className="w-full max-w-md rounded-[2rem] border border-[#222d46] bg-[radial-gradient(ellipse_at_55%_0%,_#2a1d50_0%,_#17132b_40%,_#080c15_78%)] p-8 shadow-[0_20px_70px_rgba(0,0,0,0.35)]">
+          <Logo className="mx-auto mb-5 h-12 w-40 object-contain" />
+          <h1 className="mt-2 text-center text-2xl font-black tracking-tight text-white">
+            Welcome back
           </h1>
           <p className="mt-2 text-center text-sm text-[#8190b0]">
-            Welcome back! Sign in to your Hapo account
+            Sign in to your HapoPay account
           </p>
 
+          <div
+            aria-label="Choose account type"
+            className="mt-8 grid grid-cols-2 rounded-2xl border border-[#26334d] bg-[#1c2638] p-1"
+          >
+            <button
+              type="button"
+              aria-pressed={role === "parent"}
+              onClick={() => {
+                setRole("parent");
+                setError("");
+              }}
+              className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition ${
+                role === "parent"
+                  ? "bg-[#101827] text-slate-100 shadow-sm"
+                  : "text-[#9aa8bf] hover:text-slate-100"
+              }`}
+            >
+              <UserRound aria-hidden="true" size={19} className="text-blue-500" />
+              Parent
+            </button>
+            <button
+              type="button"
+              aria-pressed={role === "student"}
+              onClick={() => {
+                setRole("student");
+                setError("");
+              }}
+              className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition ${
+                role === "student"
+                  ? "bg-[#101827] text-slate-100 shadow-sm"
+                  : "text-[#9aa8bf] hover:text-slate-100"
+              }`}
+            >
+              <span aria-hidden="true" className="text-lg leading-none">🎒</span>
+              Student
+            </button>
+          </div>
+
           {/* Form */}
-          <form onSubmit={handleSignIn} className="mt-8 space-y-5">
+          <form onSubmit={handleSignIn} className="mt-7 space-y-5">
             {error && <p role="alert" className="rounded-xl border border-red-400/30 bg-red-400/10 p-3 text-sm text-red-200">{error}</p>}
             {/* Email Field */}
             <div>
-                <label htmlFor="parent-email" className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">
-                Email Address
+              <label htmlFor="login-email" className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">
+                Email
               </label>
-              <input
-                id="parent-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="mt-2 w-full rounded-2xl border border-[#26334d] bg-[#121a2a] px-4 py-3 text-slate-100 placeholder-[#71809d] transition focus:border-[#713cff] focus:outline-none focus:ring-1 focus:ring-[#713cff]"
-                required
-              />
+              <div className="relative mt-2">
+                <Mail aria-hidden="true" size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8190b0]" />
+                <input
+                  id="login-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                  className="w-full rounded-2xl border border-[#26334d] bg-[#121a2a] py-4 pl-12 pr-4 text-slate-100 placeholder-[#71809d] transition focus:border-[#713cff] focus:outline-none focus:ring-1 focus:ring-[#713cff]"
+                  required
+                />
+              </div>
             </div>
 
             {/* Password Field */}
             <div>
-                <label htmlFor="parent-password" className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">
-                Password
-              </label>
-              <input
-                id="parent-password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="mt-2 w-full rounded-2xl border border-[#26334d] bg-[#121a2a] px-4 py-3 text-slate-100 placeholder-[#71809d] transition focus:border-[#713cff] focus:outline-none focus:ring-1 focus:ring-[#713cff]"
-                required
-              />
-            </div>
-
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={() => navigate("/forgot-password")}
-                className="text-sm font-semibold text-[#8d62ff] transition hover:text-[#aa8aff]"
-              >
-                Forgot password?
-              </button>
+              <div className="flex items-center justify-between">
+                <label htmlFor="login-password" className="block text-sm font-semibold uppercase tracking-wide text-[#8190b0]">
+                  Password
+                </label>
+                <button
+                  type="button"
+                  onClick={() => navigate("/forgot-password")}
+                  className="text-sm font-semibold text-[#8d62ff] transition hover:text-[#aa8aff]"
+                >
+                  Forgot your password?
+                </button>
+              </div>
+              <div className="relative mt-2">
+                <LockKeyhole aria-hidden="true" size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8190b0]" />
+                <input
+                  id="login-password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                  className="w-full rounded-2xl border border-[#26334d] bg-[#121a2a] py-4 pl-12 pr-12 text-slate-100 placeholder-[#71809d] transition focus:border-[#713cff] focus:outline-none focus:ring-1 focus:ring-[#713cff]"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((visible) => !visible)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-pressed={showPassword}
+                  className="absolute inset-y-0 right-0 flex items-center px-4 text-[#8190b0] transition hover:text-slate-100 focus:outline-none focus-visible:text-slate-100"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             {/* Sign In Button */}
@@ -109,6 +177,39 @@ export default function ParentLoginScreen() {
             >
               {isSubmitting ? "Signing in..." : "Sign In"}
             </button>
+
+            <div className="space-y-5 pt-1">
+              <div className="flex items-center gap-3 text-xs font-medium text-[#8190b0]">
+                <span className="h-px flex-1 bg-[#202a40]" />
+                <span>or continue with</span>
+                <span className="h-px flex-1 bg-[#202a40]" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={handleSocialSignIn}
+                  className="flex items-center justify-center gap-2 rounded-2xl border border-[#26334d] bg-[#121a2a] px-4 py-3 text-sm font-semibold text-slate-100 transition hover:bg-[#192338]"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 48 48" className="h-5 w-5">
+                    <path fill="#FFC107" d="M43.6 24.5c0-1.4-.1-2.8-.4-4.1H24v7.8h11a9.4 9.4 0 0 1-4.1 6.2v5.1h6.6c3.9-3.6 6.1-8.8 6.1-15Z" />
+                    <path fill="#FF3D00" d="M24 44c5.5 0 10.1-1.8 13.5-4.9l-6.6-5.1c-1.8 1.2-4.1 1.9-6.9 1.9-5.3 0-9.8-3.6-11.4-8.5H5.8v5.2A20 20 0 0 0 24 44Z" />
+                    <path fill="#4CAF50" d="M12.6 27.4a12 12 0 0 1 0-6.8v-5.2H5.8a20 20 0 0 0 0 17.2l6.8-5.2Z" />
+                    <path fill="#1976D2" d="M24 12.1c3 0 5.7 1 7.8 3.1l5.9-5.9C34.1 6 29.5 4 24 4A20 20 0 0 0 5.8 15.4l6.8 5.2c1.6-4.9 6.1-8.5 11.4-8.5Z" />
+                  </svg>
+                  Google
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSocialSignIn}
+                  className="flex items-center justify-center gap-2 rounded-2xl border border-[#26334d] bg-[#121a2a] px-4 py-3 text-sm font-semibold text-slate-100 transition hover:bg-[#192338]"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 fill-current">
+                    <path d="M16.37 12.25c.02 2.14 1.88 2.85 1.9 2.86-.02.05-.3 1.03-.98 2.04-.59.87-1.2 1.74-2.17 1.76-.95.02-1.26-.57-2.35-.57-1.08 0-1.43.55-2.33.59-.94.04-1.65-.94-2.25-1.8-1.23-1.78-2.17-5.03-.91-7.23a3.48 3.48 0 0 1 2.93-1.78c.91-.02 1.77.62 2.33.62.55 0 1.59-.77 2.68-.66.46.02 1.76.18 2.59 1.4-.07.05-1.55.9-1.54 2.77ZM14.6 5.98c.49-.59.82-1.4.73-2.21-.71.03-1.57.47-2.08 1.05-.45.52-.85 1.34-.74 2.13.79.06 1.6-.4 2.1-.97Z" />
+                  </svg>
+                  Apple
+                </button>
+              </div>
+            </div>
           </form>
 
           {/* Sign Up Link */}
@@ -118,7 +219,7 @@ export default function ParentLoginScreen() {
               onClick={() => navigate("/signup")}
               className="font-semibold text-[#8d62ff] transition hover:text-[#aa8aff]"
             >
-              Sign up here
+              Sign up
             </button>
           </p>
         </div>

@@ -1,0 +1,184 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft, CheckCircle2, Circle, Eye, EyeOff, LockKeyhole, Mail, UserRound } from "lucide-react";
+import { Logo } from "@/components/Logo";
+import { useAuthStore } from "@/store/authStore";
+
+export default function StudentSignupScreen() {
+  const navigate = useNavigate();
+  const setAuth = useAuthStore((state) => state.setAuth);
+  const [step, setStep] = useState<"details" | "family">("details");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [inviteCode, setInviteCode] = useState("");
+  const [agree, setAgree] = useState(false);
+  const [error, setError] = useState("");
+  const [complete, setComplete] = useState(false);
+  const passwordRequirements = [
+    { label: "At least 6 characters", met: password.length >= 6 },
+    { label: "Contains a number", met: /\d/.test(password) },
+    { label: "Contains a letter", met: /[A-Za-z]/.test(password) },
+  ];
+
+  const handleDetailsSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError("");
+    if (!passwordRequirements.every((requirement) => requirement.met)) {
+      setError("Please meet all password requirements.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+    if (!agree) {
+      setError("Please agree to the terms and conditions.");
+      return;
+    }
+    setStep("family");
+  };
+
+  const handleInviteSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError("");
+    if (!inviteCode.trim()) {
+      setError("Enter the family invite code from your parent.");
+      return;
+    }
+    setAuth("demo-student-token", "student");
+    setComplete(true);
+  };
+
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-[#070b14] px-4 py-8 text-slate-100">
+      <section className="w-full max-w-xl rounded-[2rem] border border-[#222d46] bg-[radial-gradient(ellipse_at_55%_0%,_#172b31_0%,_#101821_42%,_#080c15_82%)] p-6 shadow-[0_20px_70px_rgba(0,0,0,0.35)] sm:p-8">
+        <button
+          type="button"
+          onClick={() => (step === "family" ? setStep("details") : navigate("/signup"))}
+          className="inline-flex items-center gap-2 text-sm font-semibold text-[#9aa8bf] transition hover:text-white"
+        >
+          <ArrowLeft aria-hidden="true" size={16} />
+          {step === "family" ? "Back" : "Choose another role"}
+        </button>
+        <Logo className="mx-auto mt-2 h-14 w-40 object-contain" />
+
+        {complete ? (
+          <div className="mt-6 text-center">
+            <CheckCircle2 aria-hidden="true" className="mx-auto h-12 w-12 text-emerald-400" />
+            <h1 className="mt-4 text-2xl font-black text-white">You&apos;re all set!</h1>
+            <p className="mt-3 text-sm leading-6 text-[#a0aec0]">
+              Your student signup is in demo mode. The family invite code is not verified or linked until backend support is connected.
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate("/student")}
+              className="mt-6 w-full rounded-2xl bg-[#713cff] py-3.5 text-sm font-bold text-white transition hover:bg-[#824fff]"
+            >
+              Continue to HapoPay
+            </button>
+          </div>
+        ) : step === "details" ? (
+          <>
+            <h1 className="mt-4 text-center text-2xl font-black text-white">Create student account</h1>
+            <p className="mt-2 text-center text-sm text-[#9aa8bf]">Join your family on HapoPay</p>
+            <div aria-label="Signup progress" className="mt-7 flex items-center">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#713cff] text-sm font-bold">1</span>
+              <span className="mx-2 h-1 flex-1 rounded-full bg-[#713cff]" />
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#713cff] text-sm font-bold">2</span>
+              <span className="mx-2 h-1 flex-1 rounded-full bg-[#202a40]" />
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#202a40] text-sm font-bold text-[#9aa8bf]">3</span>
+            </div>
+
+            <form onSubmit={handleDetailsSubmit} className="mt-7 space-y-5">
+              {error && <p role="alert" className="rounded-xl border border-red-400/30 bg-red-400/10 p-3 text-sm text-red-200">{error}</p>}
+              <div>
+                <label htmlFor="student-signup-name" className="block text-sm font-semibold uppercase tracking-wide text-[#9aa8bf]">Full name</label>
+                <div className="relative mt-2">
+                  <UserRound aria-hidden="true" size={19} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8190b0]" />
+                  <input id="student-signup-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Ama Mensah" autoComplete="name" className="w-full rounded-2xl border border-[#26334d] bg-[#121a2a] py-3.5 pl-12 pr-4 text-slate-100 placeholder-[#71809d] focus:border-[#713cff] focus:outline-none focus:ring-1 focus:ring-[#713cff]" required />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="student-signup-email" className="block text-sm font-semibold uppercase tracking-wide text-[#9aa8bf]">Email</label>
+                <div className="relative mt-2">
+                  <Mail aria-hidden="true" size={19} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8190b0]" />
+                  <input id="student-signup-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" autoComplete="email" className="w-full rounded-2xl border border-[#26334d] bg-[#121a2a] py-3.5 pl-12 pr-4 text-slate-100 placeholder-[#71809d] focus:border-[#713cff] focus:outline-none focus:ring-1 focus:ring-[#713cff]" required />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="student-signup-password" className="block text-sm font-semibold uppercase tracking-wide text-[#9aa8bf]">Password</label>
+                <div className="relative mt-2">
+                  <LockKeyhole aria-hidden="true" size={19} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8190b0]" />
+                  <input id="student-signup-password" type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Min. 6 characters" autoComplete="new-password" minLength={6} className="w-full rounded-2xl border border-[#26334d] bg-[#121a2a] py-3.5 pl-12 pr-12 text-slate-100 placeholder-[#71809d] focus:border-[#713cff] focus:outline-none focus:ring-1 focus:ring-[#713cff]" required />
+                  <button type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "Hide password" : "Show password"} aria-pressed={showPassword} className="absolute inset-y-0 right-0 flex items-center px-4 text-[#8190b0] transition hover:text-slate-100 focus:outline-none focus-visible:text-slate-100">
+                    {showPassword ? <EyeOff aria-hidden="true" size={19} /> : <Eye aria-hidden="true" size={19} />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label htmlFor="student-signup-confirm-password" className="block text-sm font-semibold uppercase tracking-wide text-[#9aa8bf]">Confirm Password</label>
+                <div className="relative mt-2">
+                  <LockKeyhole aria-hidden="true" size={19} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8190b0]" />
+                  <input id="student-signup-confirm-password" type={showConfirmPassword ? "text" : "password"} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="Re-enter password" autoComplete="new-password" minLength={6} className="w-full rounded-2xl border border-[#26334d] bg-[#121a2a] py-3.5 pl-12 pr-12 text-slate-100 placeholder-[#71809d] focus:border-[#713cff] focus:outline-none focus:ring-1 focus:ring-[#713cff]" required />
+                  <button type="button" onClick={() => setShowConfirmPassword((visible) => !visible)} aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"} aria-pressed={showConfirmPassword} className="absolute inset-y-0 right-0 flex items-center px-4 text-[#8190b0] transition hover:text-slate-100 focus:outline-none focus-visible:text-slate-100">
+                    {showConfirmPassword ? <EyeOff aria-hidden="true" size={19} /> : <Eye aria-hidden="true" size={19} />}
+                  </button>
+                </div>
+              </div>
+              <ul aria-label="Password requirements" className="space-y-2 rounded-2xl bg-[#1e293b] p-4 text-sm font-medium text-[#a0aec0]">
+                {passwordRequirements.map(({ label, met }) => (
+                  <li key={label} className="flex items-center gap-3">
+                    {met ? (
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-xs font-bold text-white" aria-hidden="true">✓</span>
+                    ) : (
+                      <Circle aria-hidden="true" className="h-5 w-5 fill-[#172033] text-[#172033]" />
+                    )}
+                    <span className={met ? "text-slate-100" : ""}>{label}</span>
+                  </li>
+                ))}
+              </ul>
+              <label className="flex items-start gap-3 text-sm text-[#9aa8bf]">
+                <input type="checkbox" checked={agree} onChange={(event) => setAgree(event.target.checked)} className="mt-1 h-4 w-4 rounded border-[#26334d] bg-[#121a2a] text-[#713cff] focus:ring-[#713cff]" />
+                <span>
+                  I agree to the{" "}
+                  <a href="/docs/HapoPay_Terms___Conditions_.docx.pdf" target="_blank" rel="noopener noreferrer" className="font-semibold text-[#9a78ff] underline">Terms &amp; Conditions</a>
+                </span>
+              </label>
+              <button type="submit" className="w-full rounded-2xl bg-[#713cff] py-3.5 text-sm font-bold text-white shadow-lg shadow-[#713cff]/20 transition hover:bg-[#824fff]">
+                Continue
+              </button>
+            </form>
+          </>
+        ) : (
+          <>
+            <h1 className="mt-4 text-center text-2xl font-black text-white">Link to your family</h1>
+            <p className="mt-2 text-center text-sm text-[#9aa8bf]">Ask your parent for their family invite code</p>
+            <div aria-label="Signup progress" className="mt-7 flex items-center">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#713cff] text-sm font-bold">1</span>
+              <span className="mx-2 h-1 flex-1 rounded-full bg-[#713cff]" />
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#713cff] text-sm font-bold">2</span>
+              <span className="mx-2 h-1 flex-1 rounded-full bg-[#713cff]" />
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#713cff] text-sm font-bold">3</span>
+            </div>
+            <form onSubmit={handleInviteSubmit} className="mt-7 space-y-5">
+              {error && <p role="alert" className="rounded-xl border border-red-400/30 bg-red-400/10 p-3 text-sm text-red-200">{error}</p>}
+              <div>
+                <label htmlFor="student-family-invite" className="block text-sm font-semibold uppercase tracking-wide text-[#9aa8bf]">Family invite code</label>
+                <input id="student-family-invite" value={inviteCode} onChange={(event) => setInviteCode(event.target.value.toUpperCase())} placeholder="e.g. HAPOFAM-1234" autoComplete="off" className="mt-2 w-full rounded-2xl border border-[#26334d] bg-[#121a2a] px-4 py-3.5 font-semibold tracking-wider text-slate-100 placeholder:font-normal placeholder:tracking-normal placeholder:text-[#71809d] focus:border-[#713cff] focus:outline-none focus:ring-1 focus:ring-[#713cff]" required />
+                <p className="mt-3 text-sm leading-6 text-[#9aa8bf]">Your parent can find this code on their signup confirmation screen.</p>
+                <p className="mt-2 text-xs leading-5 text-[#8190b0]">Demo only: invite codes are not checked or linked to accounts until backend support is connected.</p>
+              </div>
+              <button type="submit" className="w-full rounded-2xl bg-[#713cff] py-3.5 text-sm font-bold text-white shadow-lg shadow-[#713cff]/20 transition hover:bg-[#824fff]">
+                Finish Sign Up
+              </button>
+            </form>
+          </>
+        )}
+      </section>
+    </main>
+  );
+}
