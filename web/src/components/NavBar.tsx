@@ -13,11 +13,11 @@ export default function NavBar() {
         <a href="#how-it-works" className="transition hover:text-slate-700">HOW IT WORKS</a>
       </div>
       <div className="flex items-center gap-3">
-        <a href="/login" className="rounded-full bg-[#713cff] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#824fff]">
-          Parent Sign In
+        <a href="/signup" className="rounded-full bg-[#713cff] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#824fff]">
+          Sign Up
         </a>
-        <a href="/student-login" className="hidden rounded-full border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-bold text-slate-900 transition hover:bg-slate-200 sm:inline-flex">
-          Student Login
+        <a href="/login" className="rounded-full border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-bold text-slate-900 transition hover:bg-slate-200">
+          Login
         </a>
       </div>
     </nav>

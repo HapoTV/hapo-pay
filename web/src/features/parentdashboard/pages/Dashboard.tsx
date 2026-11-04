@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
+import { createDemoFamilyInviteCode, getDemoFamilyInviteCode, saveDemoFamilyInviteCode } from '@/features/auth/familyInviteCode';
 import {
   useAddChildModal,
   useAddMoneyModal,
@@ -98,21 +99,36 @@ export const ParentDashboard: React.FC = () => {
   } = useAccountTransfer();
   const {
     showAddChildModal,
-    childFirstName,
-    setChildFirstName,
-    childLastName,
-    setChildLastName,
-    childUsername,
-    setChildUsername,
-    childPassword,
-    setChildPassword,
-    childWeeklyLimit,
-    setChildWeeklyLimit,
-    childDailyLimit,
-    setChildDailyLimit,
     openModal: openAddChildModal,
     closeModal: closeAddChildModal,
   } = useAddChildModal();
+  const [familyInviteCode, setFamilyInviteCode] = useState("");
+  const [familyInviteError, setFamilyInviteError] = useState("");
+  const [familyInviteCopyStatus, setFamilyInviteCopyStatus] = useState("");
+
+  const handleOpenAddChildModal = () => {
+    try {
+      const existingCode = getDemoFamilyInviteCode();
+      const code = existingCode ?? createDemoFamilyInviteCode();
+      if (!existingCode) saveDemoFamilyInviteCode(code);
+      setFamilyInviteCode(code);
+      setFamilyInviteError("");
+    } catch {
+      setFamilyInviteCode("");
+      setFamilyInviteError("Unable to load your family invite code. Please try again.");
+    }
+    setFamilyInviteCopyStatus("");
+    openAddChildModal();
+  };
+
+  const handleCopyFamilyInviteCode = async () => {
+    try {
+      await navigator.clipboard.writeText(familyInviteCode);
+      setFamilyInviteCopyStatus("Family invite code copied.");
+    } catch {
+      setFamilyInviteCopyStatus("Copy failed. Select and copy the code manually.");
+    }
+  };
 
   const {
     showAirtimePage,
@@ -246,22 +262,6 @@ export const ParentDashboard: React.FC = () => {
     setBuyProductType('');
     setAirtimeAmount('');
     setSelectedDataBundle('');
-  };
-
-  // Add Child handlers
-  const handleCreateChild = () => {
-    if (!childFirstName || !childLastName || !childUsername || !childPassword) return;
-    const newChild = {
-      id: String(parentData.children.length + 1),
-      name: `${childFirstName} ${childLastName}`,
-      email: childUsername,
-      spendLimit: childWeeklyLimit ? Number(childWeeklyLimit) : 0,
-      currentSpending: 0,
-      avatar: undefined,
-    };
-    setParentData({ ...parentData, children: [...parentData.children, newChild] });
-    closeAddChildModal();
-    alert(`Child account for ${newChild.name} created successfully`);
   };
 
   const handleConfirmBuyAirtime = () => {
@@ -405,7 +405,7 @@ export const ParentDashboard: React.FC = () => {
             quickActions={quickActions}
             rechargeItems={rechargeItems}
             onAddMoney={openAddMoneyModal}
-            onAddChild={openAddChildModal}
+            onAddChild={handleOpenAddChildModal}
             onChildClick={(child) => alert(`Manage ${child.name} - Coming Soon`)}
             onChangeCurrency={(child) => alert(`Change currency for ${child.name} - Coming Soon`)}
           />
@@ -571,20 +571,10 @@ export const ParentDashboard: React.FC = () => {
                     <AddChildModal
             open={showAddChildModal}
             onClose={closeAddChildModal}
-            firstName={childFirstName}
-            lastName={childLastName}
-            username={childUsername}
-            password={childPassword}
-            weeklyLimit={childWeeklyLimit}
-            dailyLimit={childDailyLimit}
-            onChangeFirstName={setChildFirstName}
-            onChangeLastName={setChildLastName}
-            onChangeUsername={setChildUsername}
-            onChangePassword={setChildPassword}
-            onChangeWeeklyLimit={setChildWeeklyLimit}
-            onChangeDailyLimit={setChildDailyLimit}
-            onSubmit={handleCreateChild}
-            currency={parentData.currency}
+            inviteCode={familyInviteCode}
+            error={familyInviteError}
+            copyStatus={familyInviteCopyStatus}
+            onCopy={handleCopyFamilyInviteCode}
           />
 
                     <AddMoneyModal
