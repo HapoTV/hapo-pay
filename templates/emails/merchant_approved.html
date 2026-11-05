@@ -1,0 +1,8 @@
+{% extends "emails/base_email.html" %}
+{% block content %}
+    <p> HI {{user.profile.full_name}},</p>
+    <div class="success-box">
+        <p> Your merchant account <strong>{{merchant_name}}</strong> has been verified and approved</p>
+    </div>
+    <p> You can now start accepting payments through HapoPay</p>
+{% endblock %}

@@ -1,13 +1,27 @@
 # apps/notifications/services.py
-from django.core.mail import send_mail
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
 from django.conf import settings
+from django.utils import timezone
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from .models import Notification, NotificationPreference
-import json
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Maps notification_type to (email subject, email template)
+EMAIL_TEMPLATES = {
+    'transaction':              ('Payment Successful',          'emails/transaction_sent.html'),
+    'transfer':                 ('Money Received',              'emails/transfer_received.html'),
+    'money_request':            ('New Money Request',           'emails/money_request.html'),
+    'money_request_approved':   ('Money Request Approved',      'emails/money_request.html'),
+    'money_request_declined':   ('Money Request Declined',      'emails/money_request.html'),
+    'alert':                    ('Account Alert',               'emails/fraud_alert.html'),
+    'spending_alert':           ('Spending Alert',              'emails/transaction_sent.html'),
+    'achievement':              ('Achievement Unlocked!',       'emails/transaction_sent.html'),
+    'system':                   ('Important Account Update',    'emails/account_suspended.html'),
+}
 
 
 class NotificationService:
@@ -15,9 +29,7 @@ class NotificationService:
 
     @staticmethod
     def send_notification(user, title, body, notification_type, metadata=None):
-        """Send notification to user via all enabled channels"""
-
-        # Create notification record
+    
         notification = Notification.objects.create(
             user=user,
             title=title,
@@ -26,81 +38,129 @@ class NotificationService:
             metadata=metadata or {}
         )
 
-        # Get user preferences
-        try:
-            prefs = NotificationPreference.objects.get(user=user)
-        except NotificationPreference.DoesNotExist:
-            prefs = None
+        prefs, _ = NotificationPreference.objects.get_or_create(user=user)
+        if not NotificationService._is_type_enabled(prefs, notification_type):
+            logger.info(
+                f'Notification suppressed by preferences | '
+                f'user={user.id} | type={notification_type}'
+            )
+            return notification
 
-        # Send WebSocket (real-time)
         NotificationService.send_websocket(user.id, notification)
 
-        # Send email if enabled
-        if prefs and prefs.email_enabled:
-            NotificationService.send_email(user.email, title, body)
+        if prefs.email_enabled:
+            context = {
+                'user': user,
+                **(metadata or {}),
+            }
+            NotificationService.send_email(
+                user=user,
+                notification_type=notification_type,
+                context=context,
+            )
+        if prefs.push_enabled:
+            NotificationService.send_push(
+                user=user,
+                title=title,
+                body=body,
+                data=metadata or {},
+            )
 
-        # Send push notification if enabled
-        if prefs and prefs.push_enabled:
-            NotificationService.send_push_notification(user, title, body, metadata)
+        if prefs.sms_enabled and notification_type in ('alert', 'system'):
+            NotificationService.send_sms(
+                phone_number=getattr(user, 'phone_number', None),
+                message=f'HapoPay Alert: {title}. {body}',
+            )
 
         return notification
 
     @staticmethod
+    def _is_type_enabled(prefs, notification_type):
+        if notification_type in ('transaction', 'transfer', 'alert'):
+            return prefs.transaction_alerts
+        if notification_type == 'spending_alert':
+            return prefs.spending_alerts
+        if notification_type == 'promotion':
+            return prefs.promotion_alerts
+        return True  
+
+    @staticmethod
     def send_websocket(user_id, notification):
-        """Send notification via WebSocket"""
         try:
             channel_layer = get_channel_layer()
             async_to_sync(channel_layer.group_send)(
-                f"user_{user_id}",
+                f'user_{user_id}',
                 {
                     'type': 'notification',
                     'notification': {
-                        'id': str(notification.id),
-                        'title': notification.title,
-                        'body': notification.body,
-                        'type': notification.notification_type,
-                        'created_at': notification.created_at.isoformat()
+                        'id':         str(notification.id),
+                        'title':      notification.title,
+                        'body':       notification.body,
+                        'type':       notification.notification_type,
+                        'created_at': notification.created_at.isoformat(),
+                        'metadata':   notification.metadata,
                     }
                 }
             )
         except Exception as e:
-            logger.error(f"WebSocket notification failed: {str(e)}")
+            logger.error(f'WebSocket notification failed | user={user_id} | error={e}')
 
     @staticmethod
-    def send_email(recipient_email, subject, body):
-        """Send email notification"""
+    def send_email(user, notification_type, context):
         try:
-            send_mail(
-                subject=f"HapoPay: {subject}",
-                message=body,
+            subject, template = EMAIL_TEMPLATES.get(
+                notification_type,
+                ('HapoPay Notification', 'emails/transaction_sent.html')
+            )
+            html_content = render_to_string(template, context)
+
+            msg = EmailMultiAlternatives(
+                subject=f'HapoPay: {subject}',
+                body=html_content,           # plain text fallback
                 from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[recipient_email],
-                fail_silently=False,
+                to=[user.email],
+            )
+            msg.attach_alternative(html_content, 'text/html')
+            msg.send(fail_silently=False)
+
+            logger.info(f'Email sent | user={user.id} | type={notification_type}')
+        except Exception as e:
+            logger.error(f'Email failed | user={user.id} | error={e}')
+
+    @staticmethod
+    def send_push(user, title, body, data=None):
+        """Send Firebase push notification to all active device tokens"""
+        try:
+            import firebase_admin
+            from firebase_admin import credentials, messaging
+
+            if not firebase_admin._apps:
+                cred = credentials.Certificate(settings.FIREBASE_CREDENTIALS_PATH)
+                firebase_admin.initialize_app(cred)
+
+            tokens = list(
+                user.device_tokens.filter(is_active=True).values_list('token', flat=True)
+            )
+            if not tokens:
+                return
+
+            message = messaging.MulticastMessage(
+                notification=messaging.Notification(title=title, body=body),
+                data={k: str(v) for k, v in (data or {}).items()},
+                tokens=tokens,
+            )
+            response = messaging.send_each_for_multicast(message)
+
+            for idx, result in enumerate(response.responses):
+                if not result.success:
+                    user.device_tokens.filter(token=tokens[idx]).update(is_active=False)
+                    logger.warning(f'Deactivated invalid FCM token | user={user.id}')
+
+            logger.info(
+                f'Push sent | user={user.id} | '
+                f'success={response.success_count} | failed={response.failure_count}'
             )
         except Exception as e:
-            logger.error(f"Email notification failed: {str(e)}")
+            logger.error(f'Push notification failed | user={user.id} | error={e}')
 
-    @staticmethod
-    def send_push_notification(user, title, body, metadata):
-        """Send push notification via Firebase"""
-        try:
-            # This is a mock implementation
-            # Replace with actual Firebase Cloud Messaging integration
-
-            # Get user's FCM token (stored in user profile)
-            # fcm_token = user.profile.fcm_token
-            # if fcm_token:
-            #     from firebase_admin import messaging
-            #     message = messaging.Message(
-            #         notification=messaging.Notification(
-            #             title=title,
-            #             body=body,
-            #         ),
-            #         token=fcm_token,
-            #         data=metadata or {}
-            #     )
-            #     response = messaging.send(message)
-
-            logger.info(f"Push notification sent to {user.email}: {title}")
-        except Exception as e:
-            logger.error(f"Push notification failed: {str(e)}")
+  
