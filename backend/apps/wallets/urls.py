@@ -12,6 +12,7 @@ urlpatterns = [
     path('transfer/', views.TransferFundsView.as_view(), name='transfer-funds'),
     path('approve-request/', views.ApproveMoneyRequestView.as_view(), name='approve-request'),
     path('analytics/', views.SpendingAnalyticsView.as_view(), name='spending-analytics'),
-    path('wallet/', views.WalletViewSet.as_view({'get': 'list'}), name='parent-wallet'),
+    path('wallet/', views.ParentWalletView.as_view(), name='parent-wallet'),
+    path('children/', views.ParentChildrenView.as_view(), name='parent-children'),
     path('transactions/', views.TransactionViewSet.as_view({'get': 'list'}), name='parent-transactions'),
 ]

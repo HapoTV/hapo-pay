@@ -83,6 +83,7 @@ class Profile(models.Model):
 class ParentProfile(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='parent_profile')
+    family_invite_code = models.CharField(max_length=12, unique=True)
     occupation = models.CharField(max_length=200, blank=True, null=True)
     notification_preferences = models.JSONField(default=dict)
     is_verified = models.BooleanField(default=False)
@@ -128,4 +129,3 @@ class AdminProfile(models.Model):
 
     def __str__(self):
         return f"Admin: {self.user.email}"
-

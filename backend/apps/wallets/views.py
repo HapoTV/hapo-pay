@@ -12,6 +12,7 @@ from .serializers import (
     MoneyRequestSerializer, TransferFundsSerializer, UpdateSpendingLimitSerializer,
     CreateMoneyRequestSerializer, ApproveMoneyRequestSerializer
 )
+from apps.accounts.models import Profile, StudentProfile, User
 from core.permissions import IsParent, IsStudent, IsOwnAccount
 from core.supabase_client import supabase
 from apps.notifications.services import NotificationService
@@ -30,11 +31,68 @@ class WalletViewSet(viewsets.ReadOnlyModelViewSet):
         user = self.request.user
         if user.role == 'parent':
             # Parents can see their own wallet and children's wallets
-            children_ids = user.children.values_list('id', flat=True)
+            children_ids = user.children.values_list('user_id', flat=True)
             return Wallet.objects.filter(user__in=[user.id] + list(children_ids))
         else:
             # Students see only their own wallet
             return Wallet.objects.filter(user=user)
+
+
+class ParentWalletView(APIView):
+    """Return the authenticated parent's own wallet."""
+    permission_classes = [IsAuthenticated, IsParent]
+
+    def get(self, request):
+        try:
+            wallet = Wallet.objects.get(user=request.user)
+        except Wallet.DoesNotExist:
+            return Response({
+                'status': 'error',
+                'message': 'Wallet not found',
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        return Response({
+            'status': 'success',
+            'data': WalletSerializer(wallet).data,
+        })
+
+
+class ParentChildrenView(APIView):
+    """List children linked to the authenticated parent."""
+    permission_classes = [IsAuthenticated, IsParent]
+
+    def get(self, request):
+        children = StudentProfile.objects.filter(
+            parent=request.user,
+        ).select_related('user', 'user__profile', 'user__wallet')
+        data = []
+
+        for student_profile in children:
+            child = student_profile.user
+            try:
+                full_name = child.profile.full_name
+            except Profile.DoesNotExist:
+                full_name = ''
+            try:
+                wallet_balance = child.wallet.balance
+            except Wallet.DoesNotExist:
+                wallet_balance = None
+
+            data.append({
+                'id': str(child.id),
+                'email': child.email,
+                'full_name': full_name,
+                'grade': student_profile.grade,
+                'school_name': student_profile.school_name,
+                'wallet_balance': wallet_balance,
+                'is_account_frozen': student_profile.is_account_frozen,
+                'created_at': child.created_at,
+            })
+
+        return Response({
+            'status': 'success',
+            'data': data,
+        })
 
 
 class TransactionViewSet(viewsets.ReadOnlyModelViewSet):
@@ -46,7 +104,7 @@ class TransactionViewSet(viewsets.ReadOnlyModelViewSet):
         user = self.request.user
         if user.role == 'parent':
             # Parents can see their own transactions and children's transactions
-            children_ids = user.children.values_list('id', flat=True)
+            children_ids = user.children.values_list('user_id', flat=True)
             return Transaction.objects.filter(user__in=[user.id] + list(children_ids))
         else:
             # Students see only their own transactions
@@ -376,7 +434,7 @@ class SpendingAnalyticsView(APIView):
             except User.DoesNotExist:
                 return Response({'error': 'Child not found'}, status=404)
         else:
-            users = list(request.user.children.all())
+            users = list(User.objects.filter(student_profile__parent=request.user))
 
         # Determine date range
         now = timezone.now()
@@ -423,7 +481,10 @@ class SpendingAnalyticsView(APIView):
                 'period': period,
                 'total_spent': total_spent,
                 'category_breakdown': list(category_breakdown),
-                'daily_spending': list(daily_spending),
+                'daily_spending': [
+                    {'date': item['created_at__date'], 'total': item['total']}
+                    for item in daily_spending
+                ],
                 'top_merchants': list(top_merchants),
                 'transaction_count': transactions.count()
             }

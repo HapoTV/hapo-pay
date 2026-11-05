@@ -65,7 +65,7 @@ Request Body:
     "phone_number": "+27123456789"
 }
 
-Response (201 Created):
+Current backend response (201 Created; legacy until email verification is implemented):
 {
     "status": "success",
     "message": "User registered successfully",
@@ -93,7 +93,7 @@ Request Body:
     "password": "SecurePass123!"
 }
 
-Response (200 OK):
+Current backend response (200 OK; legacy until login OTP is implemented):
 {
     "status": "success",
     "message": "Login successful",
@@ -114,6 +114,75 @@ Response (200 OK):
     }
 }
 
+### Email Verification and Login OTP (required; backend not implemented)
+
+Both parent and student accounts must verify their email address after
+registration. An account must not be allowed to log in until the email has been
+verified.
+
+Recommended registration and verification flow:
+
+1. `POST /auth/register/` creates an unverified account and sends a one-time
+   verification code to the account email. It must not issue usable access or
+   refresh tokens yet.
+2. `POST /auth/verify-email/` accepts `{ "email": "user@example.com", "otp":
+   "123456" }`, verifies the code, and marks the account email as verified.
+3. Only verified accounts may continue to login.
+
+Successful verification returns:
+
+```json
+{
+  "status": "success",
+  "message": "Email verified successfully."
+}
+```
+
+Every successful email-and-password check at `POST /auth/login/` must send a
+new one-time code to the user's verified email. Return a short-lived login
+challenge identifier instead of access or refresh tokens until that code is
+verified.
+
+The login response before OTP verification should be:
+
+```json
+{
+  "status": "success",
+  "message": "A login code was sent to your email.",
+  "data": {
+    "otp_required": true,
+    "challenge_id": "short-lived-login-challenge"
+  }
+}
+```
+
+Recommended `POST /auth/verify-login-otp/` request:
+
+```json
+{
+  "challenge_id": "short-lived-login-challenge",
+  "otp": "123456"
+}
+```
+
+On successful verification, return the normal login response with the user,
+profile, and access/refresh tokens. Codes and challenges must expire, be
+single-use, and be rate-limited. The backend must enforce both email
+verification and login OTP; frontend-only checks are not authentication
+controls.
+
+The frontend currently simulates these steps with a visible demo code
+(`123456`). No email is sent and the code is not validated by the backend.
+Replace this demo flow when the verification and login-OTP API endpoints are
+implemented.
+
+### Family Invite Codes (not implemented)
+
+The frontend currently displays a dummy code in the short `HAPOFAM-1234`
+format. This value is not generated or validated by the backend and cannot pair
+accounts. A backend API endpoint and contract are still needed to generate,
+return, and validate real family codes before account pairing can be enabled.
+
 ### POST /auth/logout/
 Logout and blacklist refresh token
 
@@ -132,6 +201,8 @@ Response (200 OK):
 
 ### POST /auth/refresh/
 Get new access token using refresh token
+
+Refresh tokens rotate on use. Store the returned refresh token for the next refresh or logout request.
 
 Request Body:
 {
@@ -218,7 +289,8 @@ Response (200 OK):
 }
 
 ### GET /auth/profile/
-Get current user profile
+Get the authenticated user's profile. This endpoint returns the current account
+directly and does not require a profile ID.
 
 Headers: Authorization: Bearer <access_token>
 
@@ -240,8 +312,9 @@ Response (200 OK):
     }
 }
 
-### PUT /auth/profile/
-Update user profile
+### PUT /auth/profile/ or PATCH /auth/profile/
+Update the authenticated user's profile. Both methods accept partial updates.
+`id`, `email`, `role`, `phone_number`, and `created_at` are read-only.
 
 Headers: Authorization: Bearer <access_token>
 
@@ -259,8 +332,17 @@ Response (200 OK):
 {
     "status": "success",
     "data": {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "email": "john@example.com",
+        "role": "parent",
         "full_name": "John Smith",
-        "avatar_url": "https://..."
+        "avatar_url": "https://...",
+        "phone_number": "+27123456789",
+        "date_of_birth": "1990-01-01",
+        "address": "123 Main St",
+        "city": "Cape Town",
+        "country": "South Africa",
+        "created_at": "2026-06-01T10:00:00Z"
     }
 }
 
@@ -269,7 +351,7 @@ Response (200 OK):
 ## Parent Endpoints
 
 ### GET /parent/wallet/
-Get parent wallet balance
+Get the authenticated parent's own wallet.
 
 Headers: Authorization: Bearer <access_token>
 
@@ -278,6 +360,8 @@ Response (200 OK):
     "status": "success",
     "data": {
         "id": "wallet-uuid",
+        "user": "parent-user-uuid",
+        "user_email": "parent@example.com",
         "balance": 1500.00,
         "currency": "ZAR",
         "is_active": true,
@@ -308,7 +392,7 @@ Response (200 OK):
 }
 
 ### GET /parent/children/
-List all children linked to parent
+List the student accounts linked to the authenticated parent.
 
 Headers: Authorization: Bearer <access_token>
 
@@ -339,8 +423,13 @@ Response (200 OK):
     ]
 }
 
-### POST /parent/children/
-Add a new child
+`grade` and `school_name` may be `null`; `wallet_balance` is `null` if the
+student does not have a wallet yet. The endpoint returns only accounts linked
+to the authenticated parent.
+
+### Not implemented: POST /parent/children/
+The backend does not currently implement adding a child through this endpoint.
+The following request and response are a proposed contract only.
 
 Headers: Authorization: Bearer <access_token>
 
@@ -364,8 +453,9 @@ Response (201 Created):
     }
 }
 
-### GET /parent/children/{child_id}/transactions/
-Get child's transaction history with pagination and filters
+### Not implemented: GET /parent/children/{child_id}/transactions/
+Child-specific transaction history is not currently exposed at this endpoint.
+The following query parameters and response are a proposed contract only.
 
 Headers: Authorization: Bearer <access_token>
 
@@ -403,8 +493,9 @@ Response (200 OK):
     }
 }
 
-### GET /parent/children/{child_id}/spending-limits/
-Get spending limits for a child
+### Not implemented: GET /parent/children/{child_id}/spending-limits/
+Child-specific spending-limit retrieval is not currently exposed at this endpoint.
+The following response is a proposed contract only.
 
 Headers: Authorization: Bearer <access_token>
 
@@ -429,8 +520,9 @@ Response (200 OK):
     ]
 }
 
-### PUT /parent/children/{child_id}/spending-limits/
-Update spending limits for a child
+### Not implemented: PUT /parent/children/{child_id}/spending-limits/
+Child-specific spending-limit updates are not currently exposed at this endpoint.
+The following request and response are a proposed contract only.
 
 Headers: Authorization: Bearer <access_token>
 
@@ -457,6 +549,27 @@ Response (200 OK):
     }
 }
 
+### GET /parent/children/limits/
+List spending limits created by the authenticated parent. The response uses
+DRF pagination (`count`, `next`, `previous`, `results`).
+
+### POST /parent/children/limits/
+Create or update a child's spending limit for a category. The parent must own
+the student account.
+
+Request body:
+{
+    "child_id": "child-uuid",
+    "category": "entertainment",
+    "daily_limit": 75.00,
+    "weekly_limit": 250.00,
+    "monthly_limit": 600.00,
+    "is_enabled": true
+}
+
+The response is an envelope with `status`, `message`, and `data` containing the
+saved limit.
+
 ### GET /parent/money-requests/
 Get all money requests from children
 
@@ -482,7 +595,8 @@ Response (200 OK):
 }
 
 ### POST /parent/money-requests/{request_id}/approve/
-Approve a money request from child
+Not implemented. Use `POST /parent/approve-request/` for the currently
+implemented approval/decline action.
 
 Headers: Authorization: Bearer <access_token>
 
@@ -498,7 +612,8 @@ Response (200 OK):
 }
 
 ### POST /parent/money-requests/{request_id}/decline/
-Decline a money request from child
+Not implemented. Use `POST /parent/approve-request/` for the currently
+implemented approval/decline action.
 
 Headers: Authorization: Bearer <access_token>
 
@@ -512,6 +627,19 @@ Response (200 OK):
     "status": "success",
     "message": "Money request declined"
 }
+
+### POST /parent/approve-request/
+Approve or decline a pending money request belonging to the authenticated
+parent.
+
+Request body:
+{
+    "request_id": "request-uuid",
+    "action": "approve",
+    "parent_notes": "Approved for books"
+}
+
+Set `action` to `approve` or `decline`. `parent_notes` is optional.
 
 ### POST /parent/freeze-account/{child_id}/
 Temporarily freeze child's account
@@ -540,7 +668,7 @@ Response (200 OK):
     "message": "Account unfrozen successfully"
 }
 
-### GET /parent/analytics/spending/
+### GET /parent/analytics/
 Get spending analytics dashboard
 
 Headers: Authorization: Bearer <access_token>
@@ -555,25 +683,20 @@ Response (200 OK):
     "data": {
         "period": "month",
         "total_spent": 450.00,
-        "total_saved": 200.00,
-        "average_daily": 15.00,
         "category_breakdown": [
             {
                 "category": "food",
                 "total": 200.00,
-                "percentage": 44.4,
                 "count": 15
             },
             {
                 "category": "entertainment",
                 "total": 150.00,
-                "percentage": 33.3,
                 "count": 5
             },
             {
                 "category": "transport",
                 "total": 100.00,
-                "percentage": 22.2,
                 "count": 8
             }
         ],
@@ -598,14 +721,18 @@ Response (200 OK):
     }
 }
 
+The current backend does not include `total_saved` or `average_daily`.
+`daily_spending.date` is the transaction date; category items contain
+`category`, `total`, and `count`, while top-merchant items contain
+`merchant_name`, `total`, and `count`.
+
 ### GET /parent/transactions/
-Get parent's own transaction history
+Get transactions for the authenticated parent and their linked children. The
+backend uses DRF pagination (`count`, `next`, `previous`, `results`).
 
 Headers: Authorization: Bearer <access_token>
 
-Query Parameters: Same as child transactions endpoint
-
-Response: Same format as child transactions
+Query Parameters: `page`, `type`, `category`, `start_date`, and `end_date`.
 
 ---
 

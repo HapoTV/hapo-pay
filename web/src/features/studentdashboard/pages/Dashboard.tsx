@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CreditCard, Gamepad2, Home, Settings, Star } from 'lucide-react';
+import { authApi, getApiErrorMessage } from '@/api/client';
 import { useAuthStore } from '@/store/authStore';
 import { BottomNavigation, DashboardTopbar } from '@/features/parentdashboard/components';
 import StudentHome from '../components/StudentHome';
@@ -9,7 +10,8 @@ import StudentGames from '../components/StudentGames';
 import StudentProfile from '../components/StudentProfile';
 
 const mockStudentData = {
-    name: 'Lilitha Klaas',
+    name: '',
+    email: '',
     balance: 530.0,
     monthlySpending: 0.0,
     currency: 'R',
@@ -83,10 +85,47 @@ export const StudentDashboard: React.FC = () => {
     const clearAuth = useAuthStore((state) => state.clearAuth);
     const [currentTab, setCurrentTab] = useState<TabType>('home');
     const [verified, setVerified] = useState(false);
+    const [studentData, setStudentData] = useState(mockStudentData);
+    const [profileError, setProfileError] = useState('');
+    const [profileLoadAttempt, setProfileLoadAttempt] = useState(0);
 
-    const handleLogout = () => {
-        clearAuth();
-        navigate('/login');
+    useEffect(() => {
+        let active = true;
+
+        authApi.getProfile()
+            .then(({ data }) => {
+                if (!active) return;
+                if (data.data.role !== 'student') {
+                    throw new Error('This account is not registered as a student.');
+                }
+                setStudentData((current) => ({
+                    ...current,
+                    name: data.data.full_name,
+                    email: data.data.email,
+                }));
+                setProfileError('');
+            })
+            .catch((error: unknown) => {
+                if (active) {
+                    setProfileError(getApiErrorMessage(error, 'Unable to load your profile.'));
+                }
+            });
+
+        return () => {
+            active = false;
+        };
+    }, [profileLoadAttempt]);
+
+    const handleLogout = async () => {
+        const refreshToken = useAuthStore.getState().refreshToken;
+        try {
+            if (refreshToken) await authApi.logout(refreshToken);
+        } catch (error) {
+            console.error('Unable to revoke the session on the server.', error);
+        } finally {
+            clearAuth();
+            navigate('/login');
+        }
     };
 
     const handleTabChange = (tab: TabType) => {
@@ -105,7 +144,7 @@ export const StudentDashboard: React.FC = () => {
     const renderContent = () => {
         switch (currentTab) {
             case 'home':
-                return <StudentHome studentData={mockStudentData} />;
+                return <StudentHome studentData={studentData} />;
             case 'pay':
                 return verified
                     ? <QRPayment onBack={() => setVerified(false)} />
@@ -115,7 +154,7 @@ export const StudentDashboard: React.FC = () => {
             case 'games':
                 return <StudentGames />;
             case 'settings':
-                return <StudentProfile studentData={mockStudentData} />;
+                return <StudentProfile studentData={studentData} />;
             default:
                 return null;
         }
@@ -128,7 +167,21 @@ export const StudentDashboard: React.FC = () => {
                 <aside className="w-full flex-shrink-0 md:w-64">
                     <BottomNavigation items={navItems} />
                 </aside>
-                <main className="flex-1">{renderContent()}</main>
+                <main className="flex-1">
+                    {profileError && (
+                        <div role="alert" className="mx-4 mt-4 flex items-center justify-between gap-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
+                            <span>{profileError}</span>
+                            <button
+                                type="button"
+                                onClick={() => setProfileLoadAttempt((attempt) => attempt + 1)}
+                                className="shrink-0 font-semibold underline"
+                            >
+                                Retry
+                            </button>
+                        </div>
+                    )}
+                    {renderContent()}
+                </main>
             </div>
         </div>
     );

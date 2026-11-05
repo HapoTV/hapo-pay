@@ -19,6 +19,22 @@ class ProfileSerializer(serializers.ModelSerializer):
         read_only_fields = ('id',)
 
 
+class CurrentUserProfileSerializer(serializers.ModelSerializer):
+    id = serializers.UUIDField(source='user.id', read_only=True)
+    email = serializers.EmailField(source='user.email', read_only=True)
+    role = serializers.CharField(source='user.role', read_only=True)
+    phone_number = serializers.CharField(source='user.phone_number', read_only=True, allow_null=True)
+    created_at = serializers.DateTimeField(source='user.created_at', read_only=True)
+
+    class Meta:
+        model = Profile
+        fields = (
+            'id', 'email', 'role', 'full_name', 'avatar_url', 'phone_number',
+            'date_of_birth', 'address', 'city', 'country', 'created_at',
+        )
+        read_only_fields = ('id', 'email', 'role', 'phone_number', 'created_at')
+
+
 class ParentProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = ParentProfile

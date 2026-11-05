@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { authApi, getApiErrorMessage } from '@/api/client';
 import { useAuthStore } from '@/store/authStore';
-import { createDemoFamilyInviteCode, getDemoFamilyInviteCode, saveDemoFamilyInviteCode } from '@/features/auth/familyInviteCode';
+import { getOrCreateFamilyInviteCode } from '@/features/auth/familyInviteCode';
 import {
   useAddChildModal,
   useAddMoneyModal,
@@ -63,7 +64,14 @@ export const ParentDashboard: React.FC = () => {
   const navigate = useNavigate();
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const [currentTab, setCurrentTab] = useState<TabType>('home');
-  const [parentData, setParentData] = useState(mockParentData);
+  const [parentData, setParentData] = useState({
+    ...mockParentData,
+    name: '',
+    email: '',
+    phoneNumber: null as string | null,
+  });
+  const [profileError, setProfileError] = useState('');
+  const [profileLoadAttempt, setProfileLoadAttempt] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSearchNotice, setShowSearchNotice] = useState(false);
   const {
@@ -102,21 +110,38 @@ export const ParentDashboard: React.FC = () => {
     openModal: openAddChildModal,
     closeModal: closeAddChildModal,
   } = useAddChildModal();
-  const [familyInviteCode, setFamilyInviteCode] = useState("");
-  const [familyInviteError, setFamilyInviteError] = useState("");
+  const [familyInviteCode] = useState(() => getOrCreateFamilyInviteCode());
+  const familyInviteError = "";
   const [familyInviteCopyStatus, setFamilyInviteCopyStatus] = useState("");
 
+  useEffect(() => {
+    let active = true;
+
+    authApi.getProfile()
+      .then(({ data }) => {
+        if (!active) return;
+        const profile = data.data;
+        setParentData((current) => ({
+          ...current,
+          id: profile.id,
+          name: profile.full_name,
+          email: profile.email,
+          phoneNumber: profile.phone_number,
+        }));
+        setProfileError('');
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          setProfileError(getApiErrorMessage(error, 'Unable to load your profile.'));
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [profileLoadAttempt]);
+
   const handleOpenAddChildModal = () => {
-    try {
-      const existingCode = getDemoFamilyInviteCode();
-      const code = existingCode ?? createDemoFamilyInviteCode();
-      if (!existingCode) saveDemoFamilyInviteCode(code);
-      setFamilyInviteCode(code);
-      setFamilyInviteError("");
-    } catch {
-      setFamilyInviteCode("");
-      setFamilyInviteError("Unable to load your family invite code. Please try again.");
-    }
     setFamilyInviteCopyStatus("");
     openAddChildModal();
   };
@@ -196,9 +221,16 @@ export const ParentDashboard: React.FC = () => {
   const [showTvPage, setShowTvPage] = useState(false);
   const [tvTab, setTvTab] = useState<'pay' | 'history'>('pay');
 
-  const handleLogout = () => {
-    clearAuth();
-    navigate('/login');
+  const handleLogout = async () => {
+    const refreshToken = useAuthStore.getState().refreshToken;
+    try {
+      if (refreshToken) await authApi.logout(refreshToken);
+    } catch (error) {
+      console.error('Unable to revoke the session on the server.', error);
+    } finally {
+      clearAuth();
+      navigate('/login');
+    }
   };
 
   const handleTopupWallet = () => {
@@ -444,6 +476,7 @@ export const ParentDashboard: React.FC = () => {
         return (
           <ParentProfileSection
             parentData={parentData}
+            familyInviteCode={familyInviteCode}
             onLogout={handleLogout}
           />
         );
@@ -536,7 +569,21 @@ export const ParentDashboard: React.FC = () => {
 
           <div className="flex flex-col md:flex-row">
             <aside className="w-full md:w-64 flex-shrink-0"><BottomNavigation items={navItems} /></aside>
-            <main className="flex-1">{renderContent()}</main>
+            <main className="flex-1">
+              {profileError && (
+                <div role="alert" className="mx-4 mt-4 flex items-center justify-between gap-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
+                  <span>{profileError}</span>
+                  <button
+                    type="button"
+                    onClick={() => setProfileLoadAttempt((attempt) => attempt + 1)}
+                    className="shrink-0 font-semibold underline"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+              {renderContent()}
+            </main>
           </div>
 
           {/* Modals: Wallet Topup, Recurring, Manage limits, Add Money */}

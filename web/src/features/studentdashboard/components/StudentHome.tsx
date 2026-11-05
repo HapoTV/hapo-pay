@@ -43,6 +43,9 @@ const StudentHome: React.FC<Props> = ({ studentData }) => {
 
     return (
         <div className="pb-20 md:pb-0 max-w-7xl mx-auto px-4 py-5 space-y-5 bg-slate-100 text-slate-900 dark:bg-[#0D0B1A] dark:text-white">
+            <h1 className="text-xl font-semibold text-slate-900 dark:text-white">
+                Welcome back{studentData.name ? `, ${studentData.name.split(' ')[0]}` : ''}
+            </h1>
 
             {/* Balance Cards */}
             <div className="grid grid-cols-2 gap-4">

@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
-import { MoonStar } from 'lucide-react';
+import { Copy, Eye, EyeOff, MoonStar } from 'lucide-react';
 import { authApi } from '@/api/client';
 import { useTheme } from '@/context/ThemeContext';
 import type { ParentUser } from '@/types/parent';
 
 interface ParentProfileSectionProps {
   parentData: ParentUser;
+  familyInviteCode: string;
   onLogout: () => void;
 }
 
 export const ParentProfileSection: React.FC<ParentProfileSectionProps> = ({
   parentData,
+  familyInviteCode,
   onLogout,
 }) => {
   const { theme, toggleTheme } = useTheme();
@@ -23,6 +25,19 @@ export const ParentProfileSection: React.FC<ParentProfileSectionProps> = ({
   const [passwordError, setPasswordError] = useState('');
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   const [passwordUpdated, setPasswordUpdated] = useState(false);
+  const [showFamilyInviteCode, setShowFamilyInviteCode] = useState(false);
+  const [inviteCodeCopyStatus, setInviteCodeCopyStatus] = useState('');
+
+  const handleCopyInviteCode = async () => {
+    if (!familyInviteCode) return;
+
+    try {
+      await navigator.clipboard.writeText(familyInviteCode);
+      setInviteCodeCopyStatus('Family invite code copied.');
+    } catch {
+      setInviteCodeCopyStatus('Copy failed. Select and copy the code manually.');
+    }
+  };
 
   const closePasswordDialog = () => {
     setShowChangePassword(false);
@@ -88,7 +103,7 @@ export const ParentProfileSection: React.FC<ParentProfileSectionProps> = ({
                 .slice(0, 2)}
             </div>
             <div>
-              <p className="text-base font-semibold text-slate-900">{parentData.name}</p>
+              <p className="text-base font-semibold text-slate-900">{parentData.name || 'Unavailable'}</p>
               <p className="text-sm text-slate-500">Parent Account</p>
             </div>
           </div>
@@ -109,20 +124,58 @@ export const ParentProfileSection: React.FC<ParentProfileSectionProps> = ({
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-3xl border border-slate-200 p-3">
               <p className="text-[11px] text-slate-500">Full Name</p>
-              <p className="mt-2 text-sm font-medium text-slate-900">{parentData.name}</p>
+              <p className="mt-2 text-sm font-medium text-slate-900">{parentData.name || 'Unavailable'}</p>
             </div>
             <div className="rounded-3xl border border-slate-200 p-3">
               <p className="text-[11px] text-slate-500">Email Address</p>
-              <p className="mt-2 text-sm font-medium text-slate-900">{parentData.email}</p>
+              <p className="mt-2 text-sm font-medium text-slate-900">{parentData.email || 'Unavailable'}</p>
             </div>
             <div className="rounded-3xl border border-slate-200 p-3">
               <p className="text-[11px] text-slate-500">Phone Number</p>
-              <p className="mt-2 text-sm font-medium text-slate-900">+27 71 234 5678</p>
+              <p className="mt-2 text-sm font-medium text-slate-900">{parentData.phoneNumber || 'Not provided'}</p>
             </div>
             <div className="rounded-3xl border border-slate-200 p-3">
               <p className="text-[11px] text-slate-500">Children Linked</p>
               <p className="mt-2 text-sm font-medium text-slate-900">{parentData.children.length}</p>
             </div>
+          </div>
+          <div className="mt-4 rounded-3xl border border-slate-200 p-3">
+            <p className="text-[11px] text-slate-500">Family Invite Code</p>
+            <p className="mt-1 text-xs text-slate-500">Demo code only for now. Backend code generation and account pairing are not implemented yet.</p>
+            <div className="mt-3 flex items-center gap-2">
+              <input
+                type={showFamilyInviteCode ? 'text' : 'password'}
+                value={familyInviteCode}
+                readOnly
+                aria-label="Family invite code"
+                placeholder="Invite code unavailable. Sign in again to reload it."
+                className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-900 outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => setShowFamilyInviteCode((visible) => !visible)}
+                disabled={!familyInviteCode}
+                aria-label={showFamilyInviteCode ? 'Hide family invite code' : 'Show family invite code'}
+                aria-pressed={showFamilyInviteCode}
+                className="rounded-xl border border-slate-200 p-2 text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {showFamilyInviteCode
+                  ? <EyeOff aria-hidden="true" className="h-4 w-4" />
+                  : <Eye aria-hidden="true" className="h-4 w-4" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleCopyInviteCode()}
+                disabled={!familyInviteCode}
+                aria-label="Copy family invite code"
+                className="rounded-xl border border-slate-200 p-2 text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Copy aria-hidden="true" className="h-4 w-4" />
+              </button>
+            </div>
+            {inviteCodeCopyStatus && (
+              <p role="status" className="mt-2 text-xs text-slate-500">{inviteCodeCopyStatus}</p>
+            )}
           </div>
         </section>
 

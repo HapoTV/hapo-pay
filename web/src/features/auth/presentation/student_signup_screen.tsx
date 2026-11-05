@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, Circle, Eye, EyeOff, LockKeyhole, Mail, UserRound } from "lucide-react";
+import { authApi, getApiErrorMessage } from "@/api/client";
 import { Logo } from "@/components/Logo";
 import { useAuthStore } from "@/store/authStore";
+import { DemoOtpChallenge } from "./DemoOtpChallenge";
 
 export default function StudentSignupScreen() {
   const navigate = useNavigate();
-  const setAuth = useAuthStore((state) => state.setAuth);
+  const clearAuth = useAuthStore((state) => state.clearAuth);
   const [step, setStep] = useState<"details" | "family">("details");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -14,12 +16,14 @@ export default function StudentSignupScreen() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [inviteCode, setInviteCode] = useState("");
+  const [familyInviteCode, setFamilyInviteCode] = useState("");
   const [agree, setAgree] = useState(false);
   const [error, setError] = useState("");
   const [complete, setComplete] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const passwordRequirements = [
-    { label: "At least 6 characters", met: password.length >= 6 },
+    { label: "At least 8 characters", met: password.length >= 8 },
     { label: "Contains a number", met: /\d/.test(password) },
     { label: "Contains a letter", met: /[A-Za-z]/.test(password) },
   ];
@@ -42,15 +46,30 @@ export default function StudentSignupScreen() {
     setStep("family");
   };
 
-  const handleInviteSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleInviteSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
-    if (!inviteCode.trim()) {
+    if (!familyInviteCode.trim()) {
       setError("Enter the family invite code from your parent.");
       return;
     }
-    setAuth("demo-student-token", "student");
-    setComplete(true);
+
+    setIsSubmitting(true);
+    try {
+      await authApi.register({
+        email: email.trim(),
+        password,
+        confirm_password: confirmPassword,
+        full_name: name.trim(),
+        role: "student",
+      });
+      clearAuth();
+      setComplete(true);
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, "Unable to finish signup. Please try again."));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -66,19 +85,25 @@ export default function StudentSignupScreen() {
         </button>
         <Logo className="mx-auto mt-2 h-14 w-40 object-contain" />
 
-        {complete ? (
+        {complete && !emailVerified ? (
+          <DemoOtpChallenge
+            email={email}
+            purpose="email"
+            onVerified={() => setEmailVerified(true)}
+          />
+        ) : complete ? (
           <div className="mt-6 text-center">
             <CheckCircle2 aria-hidden="true" className="mx-auto h-12 w-12 text-emerald-400" />
             <h1 className="mt-4 text-2xl font-black text-white">You&apos;re all set!</h1>
             <p className="mt-3 text-sm leading-6 text-[#a0aec0]">
-              Your student signup is in demo mode. The family invite code is not verified or linked until backend support is connected.
+              Your student account has been created. The family code is demo-only and has not linked the account yet. Sign in with your registered email and password.
             </p>
             <button
               type="button"
-              onClick={() => navigate("/student")}
+              onClick={() => navigate("/student-login")}
               className="mt-6 w-full rounded-2xl bg-[#713cff] py-3.5 text-sm font-bold text-white transition hover:bg-[#824fff]"
             >
-              Continue to HapoPay
+              Continue to login
             </button>
           </div>
         ) : step === "details" ? (
@@ -113,7 +138,7 @@ export default function StudentSignupScreen() {
                 <label htmlFor="student-signup-password" className="block text-sm font-semibold uppercase tracking-wide text-[#9aa8bf]">Password</label>
                 <div className="relative mt-2">
                   <LockKeyhole aria-hidden="true" size={19} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8190b0]" />
-                  <input id="student-signup-password" type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Min. 6 characters" autoComplete="new-password" minLength={6} className="w-full rounded-2xl border border-[#26334d] bg-[#121a2a] py-3.5 pl-12 pr-12 text-slate-100 placeholder-[#71809d] focus:border-[#713cff] focus:outline-none focus:ring-1 focus:ring-[#713cff]" required />
+                  <input id="student-signup-password" type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Min. 8 characters" autoComplete="new-password" minLength={8} className="w-full rounded-2xl border border-[#26334d] bg-[#121a2a] py-3.5 pl-12 pr-12 text-slate-100 placeholder-[#71809d] focus:border-[#713cff] focus:outline-none focus:ring-1 focus:ring-[#713cff]" required />
                   <button type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "Hide password" : "Show password"} aria-pressed={showPassword} className="absolute inset-y-0 right-0 flex items-center px-4 text-[#8190b0] transition hover:text-slate-100 focus:outline-none focus-visible:text-slate-100">
                     {showPassword ? <EyeOff aria-hidden="true" size={19} /> : <Eye aria-hidden="true" size={19} />}
                   </button>
@@ -123,7 +148,7 @@ export default function StudentSignupScreen() {
                 <label htmlFor="student-signup-confirm-password" className="block text-sm font-semibold uppercase tracking-wide text-[#9aa8bf]">Confirm Password</label>
                 <div className="relative mt-2">
                   <LockKeyhole aria-hidden="true" size={19} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8190b0]" />
-                  <input id="student-signup-confirm-password" type={showConfirmPassword ? "text" : "password"} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="Re-enter password" autoComplete="new-password" minLength={6} className="w-full rounded-2xl border border-[#26334d] bg-[#121a2a] py-3.5 pl-12 pr-12 text-slate-100 placeholder-[#71809d] focus:border-[#713cff] focus:outline-none focus:ring-1 focus:ring-[#713cff]" required />
+                  <input id="student-signup-confirm-password" type={showConfirmPassword ? "text" : "password"} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="Re-enter password" autoComplete="new-password" minLength={8} className="w-full rounded-2xl border border-[#26334d] bg-[#121a2a] py-3.5 pl-12 pr-12 text-slate-100 placeholder-[#71809d] focus:border-[#713cff] focus:outline-none focus:ring-1 focus:ring-[#713cff]" required />
                   <button type="button" onClick={() => setShowConfirmPassword((visible) => !visible)} aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"} aria-pressed={showConfirmPassword} className="absolute inset-y-0 right-0 flex items-center px-4 text-[#8190b0] transition hover:text-slate-100 focus:outline-none focus-visible:text-slate-100">
                     {showConfirmPassword ? <EyeOff aria-hidden="true" size={19} /> : <Eye aria-hidden="true" size={19} />}
                   </button>
@@ -168,12 +193,11 @@ export default function StudentSignupScreen() {
               {error && <p role="alert" className="rounded-xl border border-red-400/30 bg-red-400/10 p-3 text-sm text-red-200">{error}</p>}
               <div>
                 <label htmlFor="student-family-invite" className="block text-sm font-semibold uppercase tracking-wide text-[#9aa8bf]">Family invite code</label>
-                <input id="student-family-invite" value={inviteCode} onChange={(event) => setInviteCode(event.target.value.toUpperCase())} placeholder="e.g. HAPOFAM-1234" autoComplete="off" className="mt-2 w-full rounded-2xl border border-[#26334d] bg-[#121a2a] px-4 py-3.5 font-semibold tracking-wider text-slate-100 placeholder:font-normal placeholder:tracking-normal placeholder:text-[#71809d] focus:border-[#713cff] focus:outline-none focus:ring-1 focus:ring-[#713cff]" required />
-                <p className="mt-3 text-sm leading-6 text-[#9aa8bf]">Your parent can find this code on their signup confirmation screen.</p>
-                <p className="mt-2 text-xs leading-5 text-[#8190b0]">Demo only: invite codes are not checked or linked to accounts until backend support is connected.</p>
+                <input id="student-family-invite" value={familyInviteCode} onChange={(event) => setFamilyInviteCode(event.target.value.trim())} placeholder="HAPOFAM-..." autoComplete="off" className="mt-2 w-full rounded-2xl border border-[#26334d] bg-[#121a2a] px-4 py-3.5 font-semibold tracking-wider text-slate-100 placeholder:font-normal placeholder:tracking-normal placeholder:text-[#71809d] focus:border-[#713cff] focus:outline-none focus:ring-1 focus:ring-[#713cff]" required />
+                <p className="mt-3 text-sm leading-6 text-[#9aa8bf]">Family code validation and account pairing will be added when the backend API is available.</p>
               </div>
-              <button type="submit" className="w-full rounded-2xl bg-[#713cff] py-3.5 text-sm font-bold text-white shadow-lg shadow-[#713cff]/20 transition hover:bg-[#824fff]">
-                Finish Sign Up
+              <button type="submit" disabled={isSubmitting} className="w-full rounded-2xl bg-[#713cff] py-3.5 text-sm font-bold text-white shadow-lg shadow-[#713cff]/20 transition hover:bg-[#824fff] disabled:cursor-not-allowed disabled:opacity-70">
+                {isSubmitting ? "Creating account..." : "Finish Sign Up"}
               </button>
             </form>
           </>

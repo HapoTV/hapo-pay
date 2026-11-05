@@ -1,6 +1,7 @@
 # apps/accounts/urls.py
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from rest_framework_simplejwt.views import TokenRefreshView
 from . import views
 
 router = DefaultRouter()
@@ -11,6 +12,7 @@ urlpatterns = [
     path('register/', views.RegisterView.as_view(), name='register'),
     path('login/', views.LoginView.as_view(), name='login'),
     path('logout/', views.LogoutView.as_view(), name='logout'),
+    path('refresh/', TokenRefreshView.as_view(), name='token-refresh'),
     path('change-password/', views.ChangePasswordView.as_view(), name='change-password'),
     path('forgot-password/', views.ForgotPasswordView.as_view(), name='forgot-password'),
     path('reset-password/', views.ResetPasswordView.as_view(), name='reset-password'),
@@ -18,5 +20,6 @@ urlpatterns = [
     path('switch-role/', views.RoleSwitchView.as_view(), name='switch-role'),
 
     # Profile
+    path('profile/', views.CurrentUserProfileView.as_view(), name='current-user-profile'),
     path('', include(router.urls)),
 ]

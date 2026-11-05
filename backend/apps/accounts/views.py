@@ -5,11 +5,14 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 from django.contrib.auth import authenticate
 from django.core.mail import send_mail
+from django.shortcuts import get_object_or_404
 from django.conf import settings
+from django.db import transaction
+from django.utils import timezone
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import User, Profile, ParentProfile, StudentProfile
 from .serializers import (
-    UserSerializer, ProfileSerializer, RegisterSerializer, LoginSerializer,
+    UserSerializer, ProfileSerializer, CurrentUserProfileSerializer, RegisterSerializer, LoginSerializer,
     ChangePasswordSerializer, ForgotPasswordSerializer, ResetPasswordSerializer,
     CompleteProfileSerializer, ParentProfileSerializer, StudentProfileSerializer
 )
@@ -19,11 +22,21 @@ import random
 import string
 
 
+def create_dummy_family_invite_code():
+    for _ in range(10):
+        code = f'HAPOFAM-{random.randint(1000, 9999)}'
+        if not ParentProfile.objects.filter(family_invite_code=code).exists():
+            return code
+
+    raise RuntimeError('Unable to generate a unique family invite code.')
+
+
 class RegisterView(generics.CreateAPIView):
     """User registration endpoint"""
     permission_classes = [AllowAny]
     serializer_class = RegisterSerializer
 
+    @transaction.atomic
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -46,7 +59,10 @@ class RegisterView(generics.CreateAPIView):
 
         # Create role-specific profile
         if data['role'] == 'parent':
-            ParentProfile.objects.create(user=user)
+            ParentProfile.objects.create(
+                user=user,
+                family_invite_code=create_dummy_family_invite_code(),
+            )
         elif data['role'] == 'student':
             # For student, parent_email is required but not in this serializer
             # Will be completed in complete_profile endpoint
@@ -193,6 +209,41 @@ class ProfileViewSet(viewsets.ModelViewSet):
         })
 
 
+class CurrentUserProfileView(APIView):
+    """Retrieve or update the authenticated user's profile."""
+    permission_classes = [IsAuthenticated]
+
+    def get_profile(self, request):
+        return get_object_or_404(Profile, user=request.user)
+
+    def get(self, request):
+        serializer = CurrentUserProfileSerializer(self.get_profile(request))
+        return Response({
+            'status': 'success',
+            'data': serializer.data,
+        })
+
+    def put(self, request):
+        return self.update_profile(request)
+
+    def patch(self, request):
+        return self.update_profile(request)
+
+    def update_profile(self, request):
+        profile = self.get_profile(request)
+        serializer = CurrentUserProfileSerializer(
+            profile,
+            data=request.data,
+            partial=True,
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({
+            'status': 'success',
+            'data': serializer.data,
+        })
+
+
 class ChangePasswordView(APIView):
     """Change user password"""
     permission_classes = [IsAuthenticated]
@@ -329,7 +380,6 @@ class CompleteProfileView(APIView):
         elif user.role == 'student':
             student_profile = StudentProfile.objects.get(user=user)
 
-            # Link to parent
             if 'parent_email' in data:
                 try:
                     parent = User.objects.get(email=data['parent_email'], role='parent')
