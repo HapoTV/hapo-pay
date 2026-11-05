@@ -1,7 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CreditCard, Gamepad2, Home, Settings, Star } from 'lucide-react';
-import { authApi, getApiErrorMessage } from '@/api/client';
+import {
+    authApi,
+    getApiErrorMessage,
+    getCollectionItems,
+    studentApi,
+    type WalletTransaction,
+} from '@/api/client';
 import { useAuthStore } from '@/store/authStore';
 import { BottomNavigation, DashboardTopbar } from '@/features/parentdashboard/components';
 import StudentHome from '../components/StudentHome';
@@ -9,15 +15,14 @@ import StudentRewards from '../components/StudentRewards';
 import StudentGames from '../components/StudentGames';
 import StudentProfile from '../components/StudentProfile';
 
-const mockStudentData = {
-    name: '',
-    email: '',
-    balance: 530.0,
-    monthlySpending: 0.0,
-    currency: 'R',
-    recentActivity: [],
-    transactionHistory: [],
-};
+interface StudentDashboardData {
+    name: string;
+    email: string;
+    balance: number;
+    monthlySpending: number;
+    currency: string;
+    transactions: WalletTransaction[];
+}
 
 type TabType = 'home' | 'pay' | 'rewards' | 'games' | 'settings';
 
@@ -60,7 +65,7 @@ const VerifyIdentity: React.FC<{ onVerified: () => void; onCancel: () => void }>
     );
 };
 
-const QRPayment: React.FC<{ onBack: () => void }> = ({ onBack }) => (
+const QRPayment: React.FC<{ onBack: () => void; balance: number; currency: string }> = ({ onBack, balance, currency }) => (
     <div className="max-w-md mx-auto px-4 py-10 flex flex-col items-center gap-6">
         <button onClick={onBack} className="self-start text-violet-300 text-sm font-medium">Back</button>
         <h2 className="text-2xl font-bold text-white">Scan to Pay</h2>
@@ -74,7 +79,7 @@ const QRPayment: React.FC<{ onBack: () => void }> = ({ onBack }) => (
         </div>
         <div className="w-full max-w-xs rounded-2xl bg-slate-800 p-4 text-center">
             <p className="mb-1 text-xs text-slate-300">Available Balance</p>
-            <p className="text-2xl font-bold text-violet-300">R530.00</p>
+            <p className="text-2xl font-bold text-violet-300">{currency} {balance.toFixed(2)}</p>
         </div>
         <p className="text-xs text-slate-400">QR code expires in 5 minutes</p>
     </div>
@@ -85,9 +90,19 @@ export const StudentDashboard: React.FC = () => {
     const clearAuth = useAuthStore((state) => state.clearAuth);
     const [currentTab, setCurrentTab] = useState<TabType>('home');
     const [verified, setVerified] = useState(false);
-    const [studentData, setStudentData] = useState(mockStudentData);
+    const [studentData, setStudentData] = useState<StudentDashboardData>({
+        name: '',
+        email: '',
+        balance: 0,
+        monthlySpending: 0,
+        currency: 'R',
+        transactions: [],
+    });
     const [profileError, setProfileError] = useState('');
     const [profileLoadAttempt, setProfileLoadAttempt] = useState(0);
+    const [walletDataError, setWalletDataError] = useState('');
+    const [walletDataLoading, setWalletDataLoading] = useState(true);
+    const [walletDataLoadAttempt, setWalletDataLoadAttempt] = useState(0);
 
     useEffect(() => {
         let active = true;
@@ -115,6 +130,76 @@ export const StudentDashboard: React.FC = () => {
             active = false;
         };
     }, [profileLoadAttempt]);
+
+    useEffect(() => {
+        let active = true;
+        setWalletDataLoading(true);
+        setWalletDataError('');
+
+        Promise.allSettled([
+            studentApi.getWallet(),
+            studentApi.getTransactions(),
+        ]).then(([walletResult, transactionsResult]) => {
+            if (!active) return;
+
+            const errors: string[] = [];
+            let walletBalance: number | null = null;
+            let currency = 'R';
+
+            if (walletResult.status === 'fulfilled') {
+                const wallet = getCollectionItems(walletResult.value.data)[0];
+                if (!wallet) {
+                    errors.push('Wallet: no wallet was returned for this account.');
+                } else {
+                    const balance = Number(wallet.balance);
+                    if (Number.isFinite(balance)) {
+                        walletBalance = balance;
+                        currency = wallet.currency === 'ZAR' ? 'R' : wallet.currency;
+                    } else {
+                        errors.push('Wallet: the response contained an invalid balance.');
+                    }
+                }
+            } else {
+                errors.push(`Wallet: ${getApiErrorMessage(walletResult.reason, 'Unable to load wallet data.')}`);
+            }
+
+            if (transactionsResult.status === 'fulfilled') {
+                const transactions = getCollectionItems(transactionsResult.value.data);
+                const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+                const monthlySpending = transactions
+                    .filter((transaction) => {
+                        const createdAt = new Date(transaction.created_at).getTime();
+                        return transaction.status === 'completed'
+                            && ['payment', 'withdrawal'].includes(transaction.type)
+                            && Number.isFinite(createdAt)
+                            && createdAt >= thirtyDaysAgo;
+                    })
+                    .reduce((total, transaction) => {
+                        const amount = Number(transaction.amount);
+                        return Number.isFinite(amount) ? total + amount : total;
+                    }, 0);
+
+                setStudentData((current) => ({
+                    ...current,
+                    transactions,
+                    monthlySpending,
+                }));
+            } else {
+                errors.push(`Transactions: ${getApiErrorMessage(transactionsResult.reason, 'Unable to load transactions.')}`);
+            }
+
+            if (walletBalance !== null) {
+                setStudentData((current) => ({ ...current, balance: walletBalance, currency }));
+            }
+
+            setWalletDataError(errors.join(' '));
+            setWalletDataLoading(false);
+        });
+
+        return () => {
+            active = false;
+        };
+    }, [walletDataLoadAttempt]);
 
     const handleLogout = async () => {
         const refreshToken = useAuthStore.getState().refreshToken;
@@ -144,10 +229,14 @@ export const StudentDashboard: React.FC = () => {
     const renderContent = () => {
         switch (currentTab) {
             case 'home':
-                return <StudentHome studentData={studentData} />;
+                return <StudentHome studentData={{ ...studentData, isLoading: walletDataLoading }} />;
             case 'pay':
                 return verified
-                    ? <QRPayment onBack={() => setVerified(false)} />
+                    ? <QRPayment
+                        onBack={() => setVerified(false)}
+                        balance={studentData.balance}
+                        currency={studentData.currency}
+                    />
                     : <VerifyIdentity onVerified={() => setVerified(true)} onCancel={() => handleTabChange('home')} />;
             case 'rewards':
                 return <StudentRewards />;
@@ -178,6 +267,27 @@ export const StudentDashboard: React.FC = () => {
                             >
                                 Retry
                             </button>
+                        </div>
+                    )}
+                    {(walletDataError || walletDataLoading) && (
+                        <div
+                            role={walletDataError ? 'alert' : 'status'}
+                            className={`mx-4 mt-4 flex items-center justify-between gap-4 rounded-xl px-4 py-3 text-sm ${
+                                walletDataError
+                                    ? 'border border-amber-300 bg-amber-50 text-amber-900'
+                                    : 'border border-slate-300 bg-slate-50 text-slate-700'
+                            }`}
+                        >
+                            <span>{walletDataError || 'Loading your wallet and transactions…'}</span>
+                            {walletDataError && (
+                                <button
+                                    type="button"
+                                    onClick={() => setWalletDataLoadAttempt((attempt) => attempt + 1)}
+                                    className="shrink-0 font-semibold underline"
+                                >
+                                    Retry
+                                </button>
+                            )}
                         </div>
                     )}
                     {renderContent()}

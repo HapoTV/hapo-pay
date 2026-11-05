@@ -85,6 +85,7 @@ export function getApiErrorMessage(error: unknown, fallback: string): string {
   if (axios.isAxiosError<ApiErrorResponse>(error)) {
     const response = error.response?.data;
     if (response?.detail) return response.detail;
+    if (response?.message) return response.message;
     const fieldErrors = response?.errors ?? response;
     if (fieldErrors && typeof fieldErrors === "object") {
       const firstError = Object.values(fieldErrors).find(
@@ -96,7 +97,6 @@ export function getApiErrorMessage(error: unknown, fallback: string): string {
       }
       if (typeof firstError === "string") return firstError;
     }
-    if (response?.message) return response.message;
     if (!error.response) {
       return "Unable to connect to HapoPay. Check your connection and try again.";
     }
@@ -141,6 +141,76 @@ interface ApiResponse<T> {
   data: T;
 }
 
+export interface Wallet {
+  id: string;
+  user: string;
+  user_email: string;
+  balance: string;
+  currency: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface ParentChild {
+  id: string;
+  email: string;
+  full_name: string;
+  grade: number | null;
+  school_name: string;
+  wallet_balance: string | null;
+  is_account_frozen: boolean;
+  created_at: string;
+}
+
+export interface WalletTransaction {
+  id: string;
+  user: string;
+  user_email: string;
+  amount: string;
+  type: string;
+  category: string;
+  status: string;
+  description: string | null;
+  merchant_name: string | null;
+  merchant_id: string | null;
+  reference_id: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
+export interface SpendingAnalytics {
+  period: string;
+  total_spent: string | number;
+  category_breakdown: Array<{
+    category: string;
+    total: string | number;
+    count: number;
+  }>;
+  daily_spending: Array<{
+    date: string;
+    total: string | number;
+  }>;
+  top_merchants: Array<{
+    merchant_name: string | null;
+    total: string | number;
+    count: number;
+  }>;
+  transaction_count: number;
+}
+
+export function getCollectionItems<T>(
+  response: PaginatedResponse<T> | T[]
+): T[] {
+  return Array.isArray(response) ? response : response.results;
+}
+
 export const authApi = {
   login: (data: { email: string; password: string }) => 
     api.post<AuthResponse>("/auth/login/", data),
@@ -168,29 +238,12 @@ export const authApi = {
 };
 
 export const parentApi = {
-  getWallet: () =>
-    api.get<ApiResponse<{
-      id: string;
-      user: string;
-      user_email: string;
-      balance: string;
-      currency: string;
-      is_active: boolean;
-      created_at: string;
-    }>>("/parent/wallet/"),
-  getChildren: () => 
-    api.get<ApiResponse<Array<{
-      id: string;
-      email: string;
-      full_name: string;
-      grade: number | null;
-      school_name: string;
-      wallet_balance: string | null;
-      is_account_frozen: boolean;
-      created_at: string;
-    }>>>("/parent/children/"),
+  getWallet: () => api.get<ApiResponse<Wallet>>("/parent/wallet/"),
+  getChildren: () => api.get<ApiResponse<ParentChild[]>>("/parent/children/"),
   getTransactions: () =>
-    api.get("/parent/transactions/"),
+    api.get<PaginatedResponse<WalletTransaction> | WalletTransaction[]>(
+      "/parent/transactions/"
+    ),
   getSpendingLimits: () =>
     api.get("/parent/children/limits/"),
   updateSpendingLimits: (data: {
@@ -211,16 +264,20 @@ export const parentApi = {
   declineMoneyRequest: (request_id: string, parent_notes?: string) =>
     api.post("/parent/approve-request/", { request_id, action: "decline", parent_notes }),
   getSpendingAnalytics: (params?: { child_id?: string; period?: "week" | "month" | "year" }) =>
-    api.get("/parent/analytics/", { params }),
+    api.get<ApiResponse<SpendingAnalytics>>("/parent/analytics/", { params }),
   freezeAccount: (child_id: string) => 
     api.post(`/parent/freeze-account/${child_id}/`),
 };
 
 export const studentApi = {
-  getBalance: () => 
-    api.get("/student/balance/"),
-  getTransactions: () => 
-    api.get("/student/transactions/"),
+  getWallet: () =>
+    api.get<PaginatedResponse<Wallet> | Wallet[]>("/student/wallet/"),
+  getBalance: () =>
+    api.get<PaginatedResponse<Wallet> | Wallet[]>("/student/wallet/"),
+  getTransactions: () =>
+    api.get<PaginatedResponse<WalletTransaction> | WalletTransaction[]>(
+      "/student/transactions/"
+    ),
   getSpendingLimits: () => 
     api.get("/student/spending-limits/"),
   createMoneyRequest: (data: { amount: number; reason: string }) => 

@@ -65,24 +65,16 @@ export const ChildrenSection: React.FC<ChildrenSectionProps> = ({
 
                 <div className="flex-shrink-0 w-40">
                   <div className="flex justify-between items-center mb-1">
-                    <span className="text-[0.65rem] text-slate-600 dark:text-slate-300">Limit</span>
+                    <span className="text-[0.65rem] text-slate-600 dark:text-slate-300">Wallet balance</span>
                     <span className="text-[0.85rem] font-semibold text-slate-950 dark:text-white">
-                      R{child.spendLimit.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {child.walletBalance === null || child.walletBalance === undefined
+                        ? 'Unavailable'
+                        : `R${child.walletBalance.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                     </span>
                   </div>
-                  <div className="w-full bg-slate-200 rounded-full h-1.5">
-                    <div
-                      className="bg-[#713cff] h-1.5 rounded-full transition-all"
-                      style={{
-                        width: `${Math.min((child.currentSpending / child.spendLimit) * 100, 100)}%`,
-                      }}
-                    />
-                  </div>
-                  <div className="text-right mt-1">
-                    <span className="text-[0.6rem] text-slate-600 dark:text-slate-300">
-                      Used: R{child.currentSpending.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                  </div>
+                  {child.isAccountFrozen && (
+                    <p className="text-right text-[0.6rem] font-semibold text-red-600">Account frozen</p>
+                  )}
                   <button
                     type="button"
                     onClick={() => onChangeCurrency?.(child)}

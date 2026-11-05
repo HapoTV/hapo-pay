@@ -1,7 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authApi, getApiErrorMessage } from '@/api/client';
+import {
+  authApi,
+  getApiErrorMessage,
+  getCollectionItems,
+  parentApi,
+  type SpendingAnalytics,
+  type WalletTransaction,
+} from '@/api/client';
 import { useAuthStore } from '@/store/authStore';
+import type { Child, ParentUser } from '@/types/parent';
 import { getOrCreateFamilyInviteCode } from '@/features/auth/familyInviteCode';
 import {
   useAddChildModal,
@@ -64,14 +72,22 @@ export const ParentDashboard: React.FC = () => {
   const navigate = useNavigate();
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const [currentTab, setCurrentTab] = useState<TabType>('home');
-  const [parentData, setParentData] = useState({
+  const [parentData, setParentData] = useState<ParentUser>({
     ...mockParentData,
     name: '',
     email: '',
     phoneNumber: null as string | null,
+    familyBalance: 0,
+    monthlySpending: 0,
+    children: [],
   });
   const [profileError, setProfileError] = useState('');
   const [profileLoadAttempt, setProfileLoadAttempt] = useState(0);
+  const [walletTransactions, setWalletTransactions] = useState<WalletTransaction[]>([]);
+  const [spendingAnalytics, setSpendingAnalytics] = useState<SpendingAnalytics | null>(null);
+  const [dashboardDataLoading, setDashboardDataLoading] = useState(true);
+  const [dashboardDataErrors, setDashboardDataErrors] = useState<string[]>([]);
+  const [dashboardDataLoadAttempt, setDashboardDataLoadAttempt] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSearchNotice, setShowSearchNotice] = useState(false);
   const {
@@ -140,6 +156,81 @@ export const ParentDashboard: React.FC = () => {
       active = false;
     };
   }, [profileLoadAttempt]);
+
+  useEffect(() => {
+    let active = true;
+    setDashboardDataLoading(true);
+    setDashboardDataErrors([]);
+
+    Promise.allSettled([
+      parentApi.getWallet(),
+      parentApi.getChildren(),
+      parentApi.getTransactions(),
+      parentApi.getSpendingAnalytics({ period: 'month' }),
+    ]).then(([walletResult, childrenResult, transactionsResult, analyticsResult]) => {
+      if (!active) return;
+
+      const errors: string[] = [];
+
+      if (walletResult.status === 'fulfilled') {
+        const wallet = walletResult.value.data.data;
+        const balance = Number(wallet.balance);
+        if (Number.isFinite(balance)) {
+          setParentData((current) => ({
+            ...current,
+            familyBalance: balance,
+            currency: wallet.currency === 'ZAR' ? 'R' : wallet.currency,
+          }));
+        } else {
+          errors.push('The wallet response contained an invalid balance.');
+        }
+      } else {
+        errors.push(`Wallet: ${getApiErrorMessage(walletResult.reason, 'Unable to load wallet data.')}`);
+      }
+
+      if (childrenResult.status === 'fulfilled') {
+        const children: Child[] = childrenResult.value.data.data.map((child) => ({
+          id: child.id,
+          name: child.full_name || child.email,
+          email: child.email,
+          grade: child.grade,
+          schoolName: child.school_name,
+          walletBalance:
+            child.wallet_balance === null ? null : Number(child.wallet_balance),
+          isAccountFrozen: child.is_account_frozen,
+        }));
+        setParentData((current) => ({ ...current, children }));
+      } else {
+        errors.push(`Children: ${getApiErrorMessage(childrenResult.reason, 'Unable to load linked children.')}`);
+      }
+
+      if (transactionsResult.status === 'fulfilled') {
+        setWalletTransactions(getCollectionItems(transactionsResult.value.data));
+      } else {
+        errors.push(`Transactions: ${getApiErrorMessage(transactionsResult.reason, 'Unable to load transactions.')}`);
+      }
+
+      if (analyticsResult.status === 'fulfilled') {
+        const analytics = analyticsResult.value.data.data;
+        setSpendingAnalytics(analytics);
+        const monthlySpending = Number(analytics.total_spent);
+        if (Number.isFinite(monthlySpending)) {
+          setParentData((current) => ({ ...current, monthlySpending }));
+        } else {
+          errors.push('Spending analytics returned an invalid total.');
+        }
+      } else {
+        errors.push(`Analytics: ${getApiErrorMessage(analyticsResult.reason, 'Unable to load spending analytics.')}`);
+      }
+
+      setDashboardDataErrors(errors);
+      setDashboardDataLoading(false);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [dashboardDataLoadAttempt]);
 
   const handleOpenAddChildModal = () => {
     setFamilyInviteCopyStatus("");
@@ -464,7 +555,15 @@ export const ParentDashboard: React.FC = () => {
         );
 
       case 'wallet':
-        return <WalletPage />;
+        return (
+          <WalletPage
+            balance={parentData.familyBalance}
+            currency={parentData.currency}
+            transactions={walletTransactions}
+            analytics={spendingAnalytics}
+            isLoading={dashboardDataLoading}
+          />
+        );
 
       case 'pay':
         return <PaySection payments={mockQrPayments} />;
@@ -581,6 +680,25 @@ export const ParentDashboard: React.FC = () => {
                     Retry
                   </button>
                 </div>
+              )}
+              {dashboardDataErrors.length > 0 && (
+                <div role="alert" className="mx-4 mt-4 flex items-start justify-between gap-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  <ul className="list-disc space-y-1 pl-5">
+                    {dashboardDataErrors.map((error) => <li key={error}>{error}</li>)}
+                  </ul>
+                  <button
+                    type="button"
+                    onClick={() => setDashboardDataLoadAttempt((attempt) => attempt + 1)}
+                    className="shrink-0 font-semibold underline"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+              {dashboardDataLoading && (
+                <p role="status" className="mx-4 mt-4 text-sm text-slate-600 dark:text-slate-300">
+                  Loading your wallet, children, and spending data…
+                </p>
               )}
               {renderContent()}
             </main>

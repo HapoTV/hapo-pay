@@ -1,21 +1,33 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
+import type { WalletTransaction } from '@/api/client';
 
 interface StudentData {
     name: string;
     balance: number;
     monthlySpending: number;
     currency: string;
-    recentActivity: unknown[];
-    transactionHistory: unknown[];
+    transactions: WalletTransaction[];
+    isLoading: boolean;
 }
 
 interface Props {
     studentData: StudentData;
 }
 
+const formatTransactionAmount = (amount: string | number, currency: string) => {
+    const value = Number(amount);
+    return Number.isFinite(value) ? `${currency} ${value.toFixed(2)}` : 'Unavailable';
+};
+
 const StudentHome: React.FC<Props> = ({ studentData }) => {
     const { balance, monthlySpending, currency } = studentData;
+    const recentTransactions = studentData.transactions
+        .filter((transaction) => {
+            const createdAt = new Date(transaction.created_at).getTime();
+            return Number.isFinite(createdAt) && createdAt >= Date.now() - 3 * 24 * 60 * 60 * 1000;
+        })
+        .slice(0, 5);
 
     const [showQRModal, setShowQRModal] = useState(false);
     const [showRequestModal, setShowRequestModal] = useState(false);
@@ -68,7 +80,7 @@ const StudentHome: React.FC<Props> = ({ studentData }) => {
                                 <path fillRule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11 4a1 1 0 10-2 0v4a1 1 0 102 0V7zm-3 1a1 1 0 10-2 0v3a1 1 0 102 0V8zM8 9a1 1 0 00-2 0v2a1 1 0 102 0V9z" clipRule="evenodd" />
                             </svg>
                         </div>
-                        <span className="text-xs text-slate-600 dark:text-gray-300">This Month</span>
+                        <span className="text-xs text-slate-600 dark:text-gray-300">Loaded spend (30 days)</span>
                     </div>
                     <p className="text-2xl font-bold text-slate-900 dark:text-white">{currency}{monthlySpending.toFixed(2)}</p>
                 </div>
@@ -128,8 +140,26 @@ const StudentHome: React.FC<Props> = ({ studentData }) => {
                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
                         </svg>
                     </div>
-                    <p className="text-slate-700 dark:text-gray-200 font-medium text-sm">No recent activity</p>
-                    <p className="text-slate-500 dark:text-gray-400 text-xs mt-2">Your activity from the last 3 days will appear here.</p>
+                    {studentData.isLoading ? (
+                        <p className="text-slate-500 dark:text-gray-400 text-sm">Loading activity…</p>
+                    ) : recentTransactions.length > 0 ? (
+                        <ul className="space-y-3 text-left">
+                            {recentTransactions.map((transaction) => (
+                                <li key={transaction.id} className="flex items-center justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <p className="truncate text-sm font-medium">{transaction.merchant_name || transaction.description || transaction.category}</p>
+                                        <p className="text-xs text-slate-500 dark:text-gray-400">{transaction.type} · {new Date(transaction.created_at).toLocaleString('en-ZA')}</p>
+                                    </div>
+                                    <p className="shrink-0 text-sm font-semibold">{formatTransactionAmount(transaction.amount, currency)}</p>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <>
+                            <p className="text-slate-700 dark:text-gray-200 font-medium text-sm">No recent transactions returned by the API.</p>
+                            <p className="text-slate-500 dark:text-gray-400 text-xs mt-2">Recent activity from the last 3 days will appear here.</p>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -142,8 +172,26 @@ const StudentHome: React.FC<Props> = ({ studentData }) => {
                             <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
                         </svg>
                     </div>
-                    <p className="text-slate-700 dark:text-gray-200 font-medium text-sm">No transaction history</p>
-                    <p className="text-slate-500 dark:text-gray-400 text-xs mt-2">Your transaction history will appear here.</p>
+                    {studentData.isLoading ? (
+                        <p className="text-slate-500 dark:text-gray-400 text-sm">Loading transactions…</p>
+                    ) : studentData.transactions.length > 0 ? (
+                        <ul className="space-y-3 text-left">
+                            {studentData.transactions.map((transaction) => (
+                                <li key={transaction.id} className="flex items-center justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <p className="truncate text-sm font-medium">{transaction.merchant_name || transaction.description || transaction.category}</p>
+                                        <p className="text-xs text-slate-500 dark:text-gray-400">{transaction.type} · {transaction.status} · {new Date(transaction.created_at).toLocaleString('en-ZA')}</p>
+                                    </div>
+                                    <p className="shrink-0 text-sm font-semibold">{formatTransactionAmount(transaction.amount, currency)}</p>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <>
+                            <p className="text-slate-700 dark:text-gray-200 font-medium text-sm">No transactions returned by the API.</p>
+                            <p className="text-slate-500 dark:text-gray-400 text-xs mt-2">Your transaction history will appear here.</p>
+                        </>
+                    )}
                 </div>
             </div>
 

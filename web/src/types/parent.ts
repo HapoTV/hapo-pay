@@ -7,8 +7,12 @@ export interface Child {
   id: string;
   name: string;
   email: string;
-  spendLimit: number;
-  currentSpending: number;
+  spendLimit?: number;
+  currentSpending?: number;
+  grade?: number | null;
+  schoolName?: string;
+  walletBalance?: number | null;
+  isAccountFrozen?: boolean;
   avatar?: string;
 }
 

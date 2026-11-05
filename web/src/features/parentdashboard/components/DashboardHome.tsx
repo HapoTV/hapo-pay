@@ -63,7 +63,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
               <div className="rounded-3xl bg-slate-50 p-1 shadow-sm border border-slate-200 flex flex-col justify-between min-h-[56px] max-w-[160px] w-full dark:bg-[#1A1830] dark:border-[#2A2740]">
                 <div className="flex items-start justify-between gap-1">
                   <div>
-                    <p className="text-slate-600 text-xs dark:text-slate-300">This Month</p>
+                    <p className="text-slate-600 text-xs dark:text-slate-300">Children spent (last 30 days)</p>
                     <p className="mt-1 text-xs font-semibold text-slate-950 dark:text-white">{parentData.currency} {parentData.monthlySpending.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   </div>
                   <div className="bg-[#e8ddff] rounded-2xl p-1 dark:bg-[#2A2740]">
@@ -75,7 +75,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
               <div className="rounded-3xl bg-slate-50 p-1 shadow-sm border border-slate-200 flex flex-col justify-between min-h-[56px] max-w-[160px] w-full dark:bg-[#1A1830] dark:border-[#2A2740]">
                 <div className="flex items-start justify-between gap-1">
                   <div>
-                    <p className="text-slate-600 text-xs dark:text-slate-300">Savings</p>
+                    <p className="text-slate-600 text-xs dark:text-slate-300">Savings (demo)</p>
                     <p className="mt-1 text-xs font-semibold text-slate-950 dark:text-white">{parentData.currency}{parentData.savings.toFixed(2)}</p>
                   </div>
                   <div className="bg-[#e8ddff] rounded-2xl p-1 dark:bg-[#2A2740]">
