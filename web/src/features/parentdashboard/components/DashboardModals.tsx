@@ -331,14 +331,14 @@ export const AddChildModal: React.FC<AddChildModalProps> = ({
   >
     <div className="space-y-4">
       <p className="text-sm leading-6 text-gray-600 dark:text-gray-300">
-        To add a child, share your family invite code with them. They can sign up as a student and enter the code to join your family.
+        This demo family code is not yet validated by the backend. A family invite API is needed before it can pair accounts.
       </p>
       {error ? (
         <p role="alert" className="rounded-xl border border-red-400/30 bg-red-400/10 p-3 text-sm text-red-200">{error}</p>
       ) : (
         <>
           <div className="flex items-center justify-between gap-3 rounded-xl bg-gray-100 p-4 dark:bg-[#0D0B1A]">
-            <p className="select-all break-all text-xl font-bold tracking-wider text-[#8d62ff]">
+            <p className="select-all break-all text-lg font-bold tracking-wider text-[#8d62ff]">
               {inviteCode}
             </p>
             <button
@@ -351,9 +351,6 @@ export const AddChildModal: React.FC<AddChildModalProps> = ({
             </button>
           </div>
           {copyStatus && <p role="status" className="text-sm text-gray-600 dark:text-gray-300">{copyStatus}</p>}
-          <p className="text-xs leading-5 text-gray-500 dark:text-gray-400">
-            Demo only: this code is stored in this browser and is not yet verified or linked by a backend.
-          </p>
         </>
       )}
       <button

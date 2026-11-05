@@ -16,6 +16,7 @@ export interface ParentUser {
   id: string;
   name: string;
   email: string;
+  phoneNumber?: string | null;
   familyBalance: number;
   monthlySpending: number;
   savings: number;

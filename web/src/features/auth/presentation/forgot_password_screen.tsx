@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { authApi, getApiErrorMessage } from "@/api/client";
 import { Logo } from "@/components/Logo";
 
 export default function ForgotPasswordScreen() {
@@ -21,9 +22,10 @@ export default function ForgotPasswordScreen() {
 
     setIsSubmitting(true);
     try {
+      await authApi.requestPasswordReset({ email: email.trim() });
       setRequestSent(true);
-    } catch {
-      setError("Unable to send reset instructions right now. Please try again.");
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, "Unable to send reset instructions right now. Please try again."));
     } finally {
       setIsSubmitting(false);
     }
@@ -48,9 +50,14 @@ export default function ForgotPasswordScreen() {
 
     setIsSubmitting(true);
     try {
+      await authApi.resetPassword({
+        token: resetToken,
+        new_password: newPassword,
+        confirm_password: confirmPassword,
+      });
       setSuccess(true);
-    } catch {
-      setError("Unable to reset your password. Please try again.");
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, "Unable to reset your password. Please try again."));
     } finally {
       setIsSubmitting(false);
     }

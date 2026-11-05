@@ -3,7 +3,7 @@ import { MoonStar, User, Users, ShieldCheck, Settings2 } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
 
 interface Props {
-    studentData: { name: string; currency: string; balance: number };
+    studentData: { name: string; email: string; currency: string; balance: number };
 }
 
 const StudentProfile: React.FC<Props> = ({ studentData }) => {
@@ -22,10 +22,10 @@ const StudentProfile: React.FC<Props> = ({ studentData }) => {
         <div className="bg-white rounded-3xl border border-slate-200 p-4 shadow-sm">
             <div className="flex items-center gap-4">
                 <div className="w-16 h-16 bg-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-lg">
-                    {studentData.name.substring(0, 2).toUpperCase()}
+                    {studentData.name.slice(0, 2).toUpperCase() || 'ST'}
                 </div>
                 <div>
-                    <p className="font-semibold text-slate-900 dark:text-white text-base">{studentData.name}</p>
+                    <p className="font-semibold text-slate-900 dark:text-white text-base">{studentData.name || 'Unavailable'}</p>
                     <p className="text-slate-600 dark:text-gray-300 text-sm">Student Account • <span className="text-emerald-500 dark:text-emerald-400 font-semibold">Active</span></p>
                 </div>
             </div>
@@ -65,15 +65,15 @@ const StudentProfile: React.FC<Props> = ({ studentData }) => {
             <div className="grid gap-4 md:grid-cols-4">
                 <div>
                     <p className="text-slate-600 dark:text-gray-300 text-xs mb-2">Full Name</p>
-                    <input type="text" value={studentData.name} disabled className="w-full bg-[#0D0B1A] border border-[#2A2740] rounded-2xl p-3 text-white text-sm" />
+                    <input type="text" value={studentData.name} placeholder="Unavailable" disabled className="w-full bg-[#0D0B1A] border border-[#2A2740] rounded-2xl p-3 text-white text-sm" />
                 </div>
                 <div>
                     <p className="text-slate-600 dark:text-gray-300 text-xs mb-2">Username</p>
-                    <input type="text" value="student@hapo.com" disabled className="w-full bg-[#0D0B1A] border border-[#2A2740] rounded-2xl p-3 text-white text-sm" />
+                    <input type="text" value={studentData.email.split('@')[0] || ''} placeholder="Unavailable" disabled className="w-full bg-[#0D0B1A] border border-[#2A2740] rounded-2xl p-3 text-white text-sm" />
                 </div>
                 <div>
                     <p className="text-slate-600 dark:text-gray-300 text-xs mb-2">Account Email</p>
-                    <input type="email" value="student@hapo.com" disabled className="w-full bg-[#0D0B1A] border border-[#2A2740] rounded-2xl p-3 text-white text-sm" />
+                    <input type="email" value={studentData.email} placeholder="Unavailable" disabled className="w-full bg-[#0D0B1A] border border-[#2A2740] rounded-2xl p-3 text-white text-sm" />
                 </div>
                 <div>
                     <p className="text-slate-600 dark:text-gray-300 text-xs mb-2">Password</p>

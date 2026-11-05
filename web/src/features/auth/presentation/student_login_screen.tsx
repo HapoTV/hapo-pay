@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { authApi, getApiErrorMessage } from "@/api/client";
 import { Logo } from "@/components/Logo";
 import { useAuthStore } from "@/store/authStore";
+import { DemoOtpChallenge } from "./DemoOtpChallenge";
 
 export default function StudentLoginScreen() {
   const navigate = useNavigate();
@@ -10,17 +12,29 @@ export default function StudentLoginScreen() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pendingTokens, setPendingTokens] = useState<{ access: string; refresh: string } | null>(null);
 
+  const finishLogin = () => {
+    if (!pendingTokens) return;
+    setAuth(pendingTokens.access, "student", pendingTokens.refresh);
+    navigate("/student");
+  };
   const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
     setIsSubmitting(true);
 
     try {
-      setAuth("demo-student-token", "student");
-      navigate("/student");
-    } catch {
-      setError("Unable to sign in. Check your details and try again.");
+      const { data } = await authApi.login({ email: email.trim(), password });
+      const { user, tokens } = data.data;
+      if (user.role !== "student") {
+        setError("This account is registered as a parent. Choose Parent to sign in.");
+        return;
+      }
+
+      setPendingTokens(tokens);
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, "Unable to sign in. Check your details and try again."));
     } finally {
       setIsSubmitting(false);
     }
@@ -52,6 +66,14 @@ export default function StudentLoginScreen() {
             Use the credentials provided by your parent
           </p>
 
+          {pendingTokens ? (
+            <DemoOtpChallenge
+              email={email.trim()}
+              purpose="login"
+              onVerified={finishLogin}
+            />
+          ) : (
+          <>
           {/* Form */}
           <form onSubmit={handleSignIn} className="mt-8 space-y-5">
             {error && <p role="alert" className="rounded-xl border border-red-400/30 bg-red-400/10 p-3 text-sm text-red-200">{error}</p>}
@@ -101,6 +123,8 @@ export default function StudentLoginScreen() {
           <p className="mt-8 text-center text-sm text-[#8190b0]">
             Need help? Ask your parent to reset your password.
           </p>
+          </>
+          )}
         </div>
       </div>
     </div>

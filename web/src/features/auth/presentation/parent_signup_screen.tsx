@@ -2,8 +2,10 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Check, Circle, Copy, Eye, EyeOff, LockKeyhole } from "lucide-react";
 import { Logo } from "@/components/Logo";
+import { authApi, getApiErrorMessage } from "@/api/client";
 import { useAuthStore } from "@/store/authStore";
-import { createDemoFamilyInviteCode, saveDemoFamilyInviteCode } from "../familyInviteCode";
+import { createFamilyInviteCode, saveFamilyInviteCode } from "../familyInviteCode";
+import { DemoOtpChallenge } from "./DemoOtpChallenge";
 
 const countries = [
   { label: "ZA +27", value: "ZA" },
@@ -13,13 +15,14 @@ const countries = [
 
 export default function ParentSignupScreen() {
   const navigate = useNavigate();
-  const setAuth = useAuthStore((state) => state.setAuth);
+  const clearAuth = useAuthStore((state) => state.clearAuth);
   const [confirmation, setConfirmation] = useState<{
     name: string;
     email: string;
     familyInviteCode: string;
   } | null>(null);
   const [copyStatus, setCopyStatus] = useState("");
+  const [emailVerified, setEmailVerified] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [surname, setSurname] = useState("");
   const [country, setCountry] = useState("ZA");
@@ -33,7 +36,7 @@ export default function ParentSignupScreen() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const passwordRequirements = [
-    { label: "At least 6 characters", met: password.length >= 6 },
+    { label: "At least 8 characters", met: password.length >= 8 },
     { label: "Contains a number", met: /\d/.test(password) },
     { label: "Contains a letter", met: /[A-Za-z]/.test(password) },
   ];
@@ -59,19 +62,32 @@ export default function ParentSignupScreen() {
     setIsSubmitting(true);
     try {
       const fullName = `${firstName.trim()} ${surname.trim()}`.trim();
-      const familyInviteCode = createDemoFamilyInviteCode();
-      saveDemoFamilyInviteCode(familyInviteCode);
-      setAuth("demo-parent-token", "parent");
+      const dialCode = countries.find((option) => option.value === country)?.label.split(" ")[1] ?? "";
+      const enteredPhone = phone.trim().replace(/[\s()-]/g, "");
+      const phoneNumber = enteredPhone.startsWith("+")
+        ? enteredPhone
+        : `${dialCode}${enteredPhone.replace(/^0/, "")}`;
+      await authApi.register({
+        email: email.trim(),
+        password,
+        confirm_password: confirmPassword,
+        full_name: fullName,
+        role: "parent",
+        phone_number: phoneNumber,
+      });
+      clearAuth();
+      const familyInviteCode = createFamilyInviteCode();
+      saveFamilyInviteCode(familyInviteCode);
       setConfirmation({ name: fullName, email: email.trim(), familyInviteCode });
-    } catch {
-      setError("Unable to save your demo family invite code. Please try again.");
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, "Unable to create your account. Please try again."));
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const copyFamilyInviteCode = async () => {
-    if (!confirmation) return;
+    if (!confirmation?.familyInviteCode) return;
 
     try {
       await navigator.clipboard.writeText(confirmation.familyInviteCode);
@@ -110,23 +126,30 @@ export default function ParentSignupScreen() {
             <span className={`mx-2 h-1 flex-1 rounded-full ${confirmation ? "bg-[#713cff]" : "bg-[#202a40]"}`} />
             <span className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold ${confirmation ? "bg-[#713cff] text-white" : "bg-[#202a40] text-[#9aa8bf]"}`}>3</span>
           </div>
-          {confirmation ? (
+          {confirmation && !emailVerified ? (
+            <DemoOtpChallenge
+              email={confirmation.email}
+              purpose="email"
+              onVerified={() => setEmailVerified(true)}
+            />
+          ) : confirmation ? (
             <section aria-labelledby="family-setup-heading">
               <h1 id="family-setup-heading" className="text-2xl font-black tracking-tight text-white">
                 Set up your family
               </h1>
 
               <div className="mt-6 rounded-2xl border border-[#26334d] bg-[#121a2a] p-5">
-                <p className="text-sm font-semibold text-[#a0aec0]">Your demo family invite code</p>
+                <p className="text-sm font-semibold text-[#a0aec0]">Your family invite code</p>
                 <div className="mt-2 flex items-center justify-between gap-3">
-                  <p className="select-all break-all text-2xl font-bold tracking-wider text-[#8d62ff] sm:text-3xl">
-                    {confirmation.familyInviteCode}
+                  <p className="select-all break-all text-lg font-bold tracking-wider text-[#8d62ff] sm:text-xl">
+                    {confirmation.familyInviteCode || "Unavailable"}
                   </p>
                   <button
                     type="button"
                     onClick={() => void copyFamilyInviteCode()}
+                    disabled={!confirmation.familyInviteCode}
                     aria-label="Copy family invite code"
-                    className="shrink-0 rounded-lg p-2 text-[#a0aec0] transition hover:bg-[#202a40] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#713cff]"
+                    className="shrink-0 rounded-lg p-2 text-[#a0aec0] transition hover:bg-[#202a40] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#713cff] disabled:opacity-50"
                   >
                     {copyStatus === "Family invite code copied." ? (
                       <Check aria-hidden="true" className="h-5 w-5 text-emerald-400" />
@@ -135,12 +158,7 @@ export default function ParentSignupScreen() {
                     )}
                   </button>
                 </div>
-                <p className="mt-2 text-sm text-[#a0aec0]">
-                  Share this code with your children so they can link their accounts to your family.
-                </p>
-                <p className="mt-2 text-xs text-[#8190b0]">
-                  Demo only: this code is not saved or usable to link accounts until backend support is connected.
-                </p>
+                <p className="mt-2 text-sm text-[#a0aec0]">This is a demo code for now. Real code generation and account pairing will be connected through a backend API later.</p>
                 {copyStatus && <p role="status" className="mt-2 text-sm text-[#a0aec0]">{copyStatus}</p>}
               </div>
 
@@ -176,10 +194,10 @@ export default function ParentSignupScreen() {
 
               <button
                 type="button"
-                onClick={() => navigate("/parent")}
+                onClick={() => navigate("/login")}
                 className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#713cff] py-3.5 text-sm font-bold text-white shadow-lg shadow-[#713cff]/20 transition hover:bg-[#824fff]"
               >
-                Continue to HapoPay
+                Continue to login
                 <ArrowRight aria-hidden="true" className="h-4 w-4" />
               </button>
             </section>
@@ -189,7 +207,7 @@ export default function ParentSignupScreen() {
             Create your parent account
           </h1>
           <p className="mt-2 text-center text-sm text-[#8190b0]">
-            Create your Hapo account to manage your family's finances
+            Create your HapoPay account to manage your family&apos;s finances
           </p>
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-5">
@@ -276,8 +294,8 @@ export default function ParentSignupScreen() {
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Min. 6 characters"
-                    minLength={6}
+                    placeholder="Min. 8 characters"
+                    minLength={8}
                     className="w-full rounded-2xl border border-[#26334d] bg-[#121a2a] py-3 pl-12 pr-12 text-slate-100 placeholder-[#71809d] transition focus:border-[#713cff] focus:outline-none focus:ring-1 focus:ring-[#713cff]"
                     required
                   />
@@ -302,7 +320,7 @@ export default function ParentSignupScreen() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Re-enter password"
-                    minLength={6}
+                    minLength={8}
                     className="w-full rounded-2xl border border-[#26334d] bg-[#121a2a] py-3 pl-12 pr-12 text-slate-100 placeholder-[#71809d] transition focus:border-[#713cff] focus:outline-none focus:ring-1 focus:ring-[#713cff]"
                     required
                   />

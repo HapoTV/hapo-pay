@@ -42,7 +42,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
           <div className="space-y-6">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#713cff]">Welcome back</p>
-              <h1 className="mt-4 text-3xl font-bold text-slate-950 dark:text-white">Olwethu</h1>
+              <h1 className="mt-4 text-3xl font-bold text-slate-950 dark:text-white">{parentData.name ? parentData.name.split(' ')[0] : 'Parent'}</h1>
               <p className="mt-3 text-slate-600 max-w-2xl leading-relaxed dark:text-slate-300">See balances, top up wallets, and manage payments, allowances, and spending for children.</p>
             </div>
 

@@ -2,7 +2,10 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, LockKeyhole, Mail, UserRound } from "lucide-react";
 import { Logo } from "@/components/Logo";
+import { authApi, getApiErrorMessage } from "@/api/client";
 import { useAuthStore } from "@/store/authStore";
+import { getOrCreateFamilyInviteCode } from "../familyInviteCode";
+import { DemoOtpChallenge } from "./DemoOtpChallenge";
 
 type LoginRole = "parent" | "student";
 
@@ -19,9 +22,20 @@ export default function ParentLoginScreen({
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pendingLogin, setPendingLogin] = useState<{
+    role: LoginRole;
+    tokens: { access: string; refresh: string };
+  } | null>(null);
 
   const handleSocialSignIn = () => {
-    setError("Google and Apple sign-in will be available when authentication is connected.");
+    setError("Google and Apple sign-in are not supported yet.");
+  };
+
+  const finishLogin = () => {
+    if (!pendingLogin) return;
+    setAuth(pendingLogin.tokens.access, pendingLogin.role, pendingLogin.tokens.refresh);
+    if (pendingLogin.role === "parent") getOrCreateFamilyInviteCode();
+    navigate(pendingLogin.role === "parent" ? "/parent" : "/student");
   };
 
   const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -30,10 +44,16 @@ export default function ParentLoginScreen({
     setIsSubmitting(true);
 
     try {
-      setAuth(`demo-${role}-token`, role);
-      navigate(role === "parent" ? "/parent" : "/student");
-    } catch {
-      setError("Unable to sign in. Check your details and try again.");
+      const { data } = await authApi.login({ email: email.trim(), password });
+      const { user, tokens } = data.data;
+      if (user.role !== role) {
+        setError(`This account is registered as a ${user.role}. Choose that account type to sign in.`);
+        return;
+      }
+
+      setPendingLogin({ role, tokens });
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, "Unable to sign in. Check your details and try again."));
     } finally {
       setIsSubmitting(false);
     }
@@ -70,6 +90,8 @@ export default function ParentLoginScreen({
             Sign in to your HapoPay account
           </p>
 
+          {!pendingLogin ? (
+          <>
           <div
             aria-label="Choose account type"
             className="mt-8 grid grid-cols-2 rounded-2xl border border-[#26334d] bg-[#1c2638] p-1"
@@ -222,6 +244,14 @@ export default function ParentLoginScreen({
               Sign up
             </button>
           </p>
+          </>
+          ) : (
+            <DemoOtpChallenge
+              email={email.trim()}
+              purpose="login"
+              onVerified={finishLogin}
+            />
+          )}
         </div>
       </div>
     </div>

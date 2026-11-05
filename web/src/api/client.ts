@@ -1,27 +1,109 @@
-import axios from "axios";
+import axios, {
+  type AxiosError,
+  type InternalAxiosRequestConfig,
+} from "axios";
 import { useAuthStore } from "@/store/authStore";
 
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? "/api/v1",
-});
+const apiBaseUrl =
+  import.meta.env.VITE_API_BASE_URL?.trim() ||
+  (import.meta.env.DEV ? "/api/v1" : "https://api.hapopay.com/api/v1");
+const api = axios.create({ baseURL: apiBaseUrl });
+
+interface RetryableRequestConfig extends InternalAxiosRequestConfig {
+  _authRetry?: boolean;
+}
+
+interface ApiErrorResponse {
+  detail?: string;
+  message?: string;
+  errors?: Record<string, string | string[]>;
+  [key: string]: unknown;
+}
+
+interface TokenRefreshResponse {
+  access: string;
+  refresh?: string;
+}
+
+let refreshRequest: Promise<string | null> | null = null;
 
 api.interceptors.request.use((config) => {
   const token = useAuthStore.getState().token;
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
 api.interceptors.response.use(
-  (res) => res,
-  (err) => {
-    if (err.response?.status === 401) {
-      useAuthStore.getState().clearAuth();
+  (response) => response,
+  async (error: AxiosError<ApiErrorResponse>) => {
+    const request = error.config as RetryableRequestConfig | undefined;
+    const requestUrl = request?.url ?? "";
+    const isAuthRequest =
+      /\/auth\/(login|register|logout|refresh)\/?$/.test(requestUrl);
+    const { refreshToken, clearAuth } = useAuthStore.getState();
+
+    if (
+      error.response?.status !== 401 ||
+      !request ||
+      request._authRetry ||
+      isAuthRequest ||
+      !refreshToken
+    ) {
+      if (error.response?.status === 401 && !isAuthRequest) clearAuth();
+      return Promise.reject(error);
     }
-    return Promise.reject(err);
+
+    request._authRetry = true;
+    if (!refreshRequest) {
+      const refreshUrl = `${apiBaseUrl.replace(/\/$/, "")}/auth/refresh/`;
+      refreshRequest = axios
+        .post<TokenRefreshResponse>(refreshUrl, { refresh: refreshToken })
+        .then(({ data }) => {
+          useAuthStore
+            .getState()
+            .setTokens(data.access, data.refresh ?? refreshToken);
+          return data.access;
+        })
+        .catch(() => {
+          useAuthStore.getState().clearAuth();
+          return null;
+        })
+        .finally(() => {
+          refreshRequest = null;
+        });
+    }
+
+    const accessToken = await refreshRequest;
+    if (!accessToken) return Promise.reject(error);
+
+    request.headers.Authorization = `Bearer ${accessToken}`;
+    return api(request);
   }
 );
+
+export function getApiErrorMessage(error: unknown, fallback: string): string {
+  if (axios.isAxiosError<ApiErrorResponse>(error)) {
+    const response = error.response?.data;
+    if (response?.detail) return response.detail;
+    const fieldErrors = response?.errors ?? response;
+    if (fieldErrors && typeof fieldErrors === "object") {
+      const firstError = Object.values(fieldErrors).find(
+        (value) => typeof value === "string" || Array.isArray(value)
+      );
+      if (Array.isArray(firstError)) {
+        const message = firstError.find((value) => typeof value === "string");
+        if (typeof message === "string") return message;
+      }
+      if (typeof firstError === "string") return firstError;
+    }
+    if (response?.message) return response.message;
+    if (!error.response) {
+      return "Unable to connect to HapoPay. Check your connection and try again.";
+    }
+  }
+
+  return error instanceof Error ? error.message : fallback;
+}
 
 // API endpoints organized by backend structure
 interface AuthResponse {
@@ -29,7 +111,7 @@ interface AuthResponse {
   message: string;
   data: {
     user: {
-      id: number;
+      id: string | number;
       email: string;
       role: 'parent' | 'student' | 'admin';
     };
@@ -40,9 +122,30 @@ interface AuthResponse {
   };
 }
 
+export interface CurrentUserProfile {
+  id: string;
+  email: string;
+  role: 'parent' | 'student' | 'admin';
+  full_name: string;
+  avatar_url: string | null;
+  phone_number: string | null;
+  date_of_birth: string | null;
+  address: string | null;
+  city: string | null;
+  country: string;
+  created_at: string;
+}
+
+interface ApiResponse<T> {
+  status: 'success';
+  data: T;
+}
+
 export const authApi = {
   login: (data: { email: string; password: string }) => 
     api.post<AuthResponse>("/auth/login/", data),
+  getProfile: () =>
+    api.get<ApiResponse<CurrentUserProfile>>("/auth/profile/"),
   register: (data: { email: string; password: string; confirm_password: string; full_name: string; role: 'parent' | 'student'; phone_number?: string }) =>
     api.post<AuthResponse>("/auth/register/", data),
   logout: (refresh: string) =>
@@ -51,37 +154,64 @@ export const authApi = {
     api.post("/auth/forgot-password/", data),
   resetPassword: (data: { token: string; new_password: string; confirm_password: string }) =>
     api.post("/auth/reset-password/", data),
+  completeProfile: (data: {
+    parent_email?: string;
+    school_name?: string;
+    grade?: number;
+    weekly_allowance?: number;
+    savings_goal?: number;
+    occupation?: string;
+    default_currency?: string;
+  }) => api.post("/auth/complete-profile/", data),
   changePassword: (data: { old_password: string; new_password: string; confirm_password: string }) =>
     api.post("/auth/change-password/", data),
 };
 
 export const parentApi = {
+  getWallet: () =>
+    api.get<ApiResponse<{
+      id: string;
+      user: string;
+      user_email: string;
+      balance: string;
+      currency: string;
+      is_active: boolean;
+      created_at: string;
+    }>>("/parent/wallet/"),
   getChildren: () => 
-    api.get("/parent/children/"),
-  createChild: (data: { first_name: string; last_name: string; date_of_birth: string; allowance_amount: number; allowance_frequency: string }) => 
-    api.post("/parent/children/", data),
-  getChild: (id: string) => 
-    api.get(`/parent/children/${id}/`),
-  updateChild: (id: string, data: { first_name?: string; last_name?: string; allowance_amount?: number; allowance_frequency?: string }) => 
-    api.put(`/parent/children/${id}/`, data),
-  deleteChild: (id: string) => 
-    api.delete(`/parent/children/${id}/`),
-  getChildTransactions: (id: string) => 
-    api.get(`/parent/children/${id}/transactions/`),
-  getSpendingLimits: (id: string) => 
-    api.get(`/parent/children/${id}/spending-limits/`),
-  updateSpendingLimits: (id: string, data: { daily_limit?: number; weekly_limit?: number; monthly_limit?: number; per_transaction_limit?: number }) => 
-    api.put(`/parent/children/${id}/spending-limits/`, data),
-  transfer: (data: { child_id: string; amount: number; description?: string }) => 
+    api.get<ApiResponse<Array<{
+      id: string;
+      email: string;
+      full_name: string;
+      grade: number | null;
+      school_name: string;
+      wallet_balance: string | null;
+      is_account_frozen: boolean;
+      created_at: string;
+    }>>>("/parent/children/"),
+  getTransactions: () =>
+    api.get("/parent/transactions/"),
+  getSpendingLimits: () =>
+    api.get("/parent/children/limits/"),
+  updateSpendingLimits: (data: {
+    child_id: string;
+    category: string;
+    daily_limit: number;
+    weekly_limit: number;
+    monthly_limit: number;
+    is_enabled?: boolean;
+  }) =>
+    api.post("/parent/children/limits/", data),
+  transfer: (data: { recipient_id: string; amount: number; description?: string }) =>
     api.post("/parent/transfer/", data),
   getMoneyRequests: () => 
     api.get("/parent/money-requests/"),
-  approveMoneyRequest: (id: string) => 
-    api.post(`/parent/money-requests/${id}/approve/`),
-  declineMoneyRequest: (id: string) => 
-    api.post(`/parent/money-requests/${id}/decline/`),
-  getSpendingAnalytics: () => 
-    api.get("/parent/analytics/spending/"),
+  approveMoneyRequest: (request_id: string, parent_notes?: string) =>
+    api.post("/parent/approve-request/", { request_id, action: "approve", parent_notes }),
+  declineMoneyRequest: (request_id: string, parent_notes?: string) =>
+    api.post("/parent/approve-request/", { request_id, action: "decline", parent_notes }),
+  getSpendingAnalytics: (params?: { child_id?: string; period?: "week" | "month" | "year" }) =>
+    api.get("/parent/analytics/", { params }),
   freezeAccount: (child_id: string) => 
     api.post(`/parent/freeze-account/${child_id}/`),
 };
