@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'drf_yasg',
     'django_filters',
     'axes',
+    'django_extensions',
 
     # Custom apps
     'apps.accounts',

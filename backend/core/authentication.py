@@ -4,7 +4,10 @@ from rest_framework.exceptions import AuthenticationFailed
 from django.contrib.auth import get_user_model
 from django.conf import settings
 import jwt
+import logging
 import requests
+
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
@@ -20,12 +23,20 @@ class SupabaseJWTAuthentication(BaseAuthentication):
 
         try:
             # Extract token
-            token = auth_header.split(' ')[1]
+            parts = auth_header.split(' ')
+            if len(parts) != 2 or parts[0].lower() != 'bearer':
+                raise AuthenticationFailed('Invalid Authorization header')
+            token = parts[1]
 
-            # Verify token with Supabase
+            # Verify token with Supabase.
+            #
+            # timeout: this call had none, so a hung Supabase auth endpoint
+            # blocked the gunicorn worker indefinitely -- one slow dependency
+            # took down the whole API.
             response = requests.get(
                 f"{settings.SUPABASE_URL}/auth/v1/user",
-                headers={"Authorization": f"Bearer {token}"}
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=getattr(settings, 'EXTERNAL_API_TIMEOUT', 10),
             )
 
             if response.status_code != 200:
@@ -44,8 +55,14 @@ class SupabaseJWTAuthentication(BaseAuthentication):
 
             return (user, token)
 
-        except (IndexError, KeyError, jwt.InvalidTokenError, requests.RequestException) as e:
-            raise AuthenticationFailed(f'Authentication failed: {str(e)}')
+        except (IndexError, KeyError, jwt.InvalidTokenError) as e:
+            logger.warning("Supabase token verification rejected a token: %s", e)
+            raise AuthenticationFailed('Invalid token')
+        except requests.RequestException:
+            # Distinguish "we could not reach the IdP" from "your token is
+            # bad": returning 401 for an outage silently logs every user out.
+            logger.exception("Supabase auth endpoint unreachable")
+            raise AuthenticationFailed('Authentication service temporarily unavailable')
 
 
 class SupabaseAuthBackend:
@@ -57,7 +74,8 @@ class SupabaseAuthBackend:
             response = requests.post(
                 f"{settings.SUPABASE_URL}/auth/v1/token?grant_type=password",
                 json={"email": email, "password": password},
-                headers={"apikey": settings.SUPABASE_KEY}
+                headers={"apikey": settings.SUPABASE_KEY},
+                timeout=getattr(settings, 'EXTERNAL_API_TIMEOUT', 10),
             )
 
             if response.status_code != 200:
@@ -78,6 +96,10 @@ class SupabaseAuthBackend:
             return user
 
         except Exception:
+            # Returning None is correct for an auth backend, but the failure
+            # must be visible: a bare silent `except` here hid Supabase
+            # outages as ordinary "wrong password" responses.
+            logger.exception("Supabase authentication backend failed")
             return None
 
     def get_user(self, user_id):

@@ -2,10 +2,12 @@
 from rest_framework import viewsets, generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from django.db import transaction
 from django.utils import timezone
 from django.core.cache import cache
+from apps.accounts.models import User
 from .models import Wallet, Transaction, SpendingLimit, MoneyRequest
 from .serializers import (
     WalletSerializer, TransactionSerializer, SpendingLimitSerializer,
@@ -123,10 +125,19 @@ class TransactionViewSet(viewsets.ReadOnlyModelViewSet):
             queryset = queryset.filter(type=transaction_type)
         if category:
             queryset = queryset.filter(category=category)
-        if start_date:
-            queryset = queryset.filter(created_at__gte=start_date)
-        if end_date:
-            queryset = queryset.filter(created_at__lte=end_date)
+        # Validated before reaching the ORM: a malformed value (e.g.
+        # ?start_date=yesterday) previously raised ValidationError from the
+        # field lookup and returned HTTP 500 instead of 400.
+        try:
+            if start_date:
+                queryset = queryset.filter(created_at__gte=parse_date_param(start_date))
+            if end_date:
+                queryset = queryset.filter(created_at__lte=parse_date_param(end_date))
+        except ValueError as exc:
+            return Response({
+                'status': 'error',
+                'message': str(exc)
+            }, status=status.HTTP_400_BAD_REQUEST)
 
         page = self.paginate_queryset(queryset)
         if page is not None:
@@ -140,6 +151,8 @@ class TransactionViewSet(viewsets.ReadOnlyModelViewSet):
 class TransferFundsView(APIView):
     """Handle fund transfers between parent and child"""
     permission_classes = [IsAuthenticated, IsParent]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'payment'
 
     @transaction.atomic
     def post(self, request):
@@ -323,6 +336,8 @@ class MoneyRequestViewSet(viewsets.ModelViewSet):
 class ApproveMoneyRequestView(APIView):
     """Approve or decline money requests"""
     permission_classes = [IsAuthenticated, IsParent]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'payment'
 
     @transaction.atomic
     def post(self, request):
